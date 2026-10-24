@@ -146,7 +146,7 @@ track progress together.
   - _Requirements: 16_
 
 ### Priority 3 — Property-based testing
-- [ ] 28. Property tests
+- [x] 28. Property tests
   - `tests/analysis.props.test.js`, `safety.props.test.js`, `adapters.props.test.js`; summarize
     findings.
   - _Requirements: 17_
