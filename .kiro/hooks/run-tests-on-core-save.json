@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Run Tests on Core Save",
+      "trigger": "PostFileSave",
+      "description": "When the pattern engine (analysis.js), the safety guard (safety.js), or any device adapter is saved, runs the full test suite, including the property-based tests, so a change that breaks safety or data handling is caught right away.",
+      "matcher": "(js/analysis\\.js|js/safety\\.js|js/datasource\\.js|js/ai\\.js|js/adapters/[^/]+\\.js|netlify/functions/[^/]+\\.mjs)$",
+      "action": {
+        "type": "command",
+        "command": "sh .kiro/hooks/run-hook.sh npm test --silent",
+        "timeout": 120
+      }
+    }
+  ]
+}

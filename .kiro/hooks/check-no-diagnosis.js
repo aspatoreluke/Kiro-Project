@@ -65,6 +65,12 @@ function collectFiles() {
   return [...files];
 }
 
+// Refuse to "pass" if we're not in the repo (nothing to scan = not a real pass).
+if (!fs.existsSync(path.join(process.cwd(), "index.html")) || !fs.existsSync(path.join(process.cwd(), "js"))) {
+  console.error("No-diagnosis check: run this from the Receipts repo folder (no index.html / js found here).");
+  process.exit(1);
+}
+
 let violations = [];
 collectFiles().forEach(rel => {
   if (SKIP.has(rel)) return;

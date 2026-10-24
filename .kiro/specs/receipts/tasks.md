@@ -152,10 +152,10 @@ track progress together.
   - _Requirements: 17_
 
 ### Priority 4 — More Kiro features
-- [ ] 29. Accessibility & privacy steering docs
+- [x] 29. Accessibility & privacy steering docs
   - `.kiro/steering/accessibility.md`, `.kiro/steering/privacy.md`.
   - _Requirements: 18.1, 18.2_
-- [ ] 30. Second hook (run tests on core save)
+- [x] 30. Second hook (run tests on core save)
   - `.kiro/hooks/run-tests-on-core-save.json` + runner.
   - _Requirements: 18.3_
 - [ ] 31. MCP server (genuine use)

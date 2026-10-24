@@ -4,10 +4,11 @@
     {
       "name": "No Diagnostic Language",
       "trigger": "PostFileSave",
-      "matcher": "\\.(js|html)$",
+      "description": "After saving any JS or HTML file, scans the app's generated and user-facing text for diagnostic or prescriptive language and flags violations, enforcing the Receipts safety rules.",
+      "matcher": "\\.(js|mjs|html)$",
       "action": {
         "type": "command",
-        "command": "node .kiro/hooks/check-no-diagnosis.js"
+        "command": "sh .kiro/hooks/run-hook.sh node .kiro/hooks/check-no-diagnosis.js"
       }
     }
   ]
