@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0A0E13" />
   <title>Receipts — your body's evidence, in plain sight</title>
   <meta name="description" content="Receipts helps people with chronic, hard-to-diagnose conditions turn wearable data into clear patterns to share with their doctor. Not a diagnosis — your clinician decides." />
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%BE%3C/text%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230A0E13'/%3E%3Cpath d='M9 5h14v22l-2.3-1.5-2.4 1.5-2.3-1.5-2.4 1.5-2.3-1.5L9 27z' fill='none' stroke='%235CE1C6' stroke-width='2.2' stroke-linejoin='round'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="styles.css" />
   <!-- Chart.js for the timeline and mini-charts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"
@@ -16,12 +17,16 @@
   <!-- App header -->
   <header class="app-header">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true">🧾</span>
+      <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M7 3h18v26l-3-2-3 2-3-2-3 2-3-2-3 2z"/>
+        <path d="M11 11h4l2-3 2 7 2-4h0"/>
+        <path d="M11 20h10"/>
+      </svg>
       <span class="brand-name">Receipts</span>
     </div>
     <p class="brand-tagline">Your body's evidence, in plain sight.</p>
     <button id="data-chip" class="data-chip" aria-label="Change data source">
-      <span aria-hidden="true">⌚</span> <span id="data-chip-label">Maya (demo data)</span> · <u>Change</u>
+      <span class="dot" aria-hidden="true"></span> <span id="data-chip-label">Maya (demo data)</span> · <u>Change</u>
     </button>
   </header>
 
@@ -29,7 +34,8 @@
     <!-- SCREEN 0: Personalize (first run) -->
     <section id="screen-personalize" class="screen" aria-label="Personalize your symptoms">
       <div class="card welcome-card">
-        <h1>Welcome 👋</h1>
+        <span class="eyebrow">Your body's evidence, in plain sight</span>
+        <h1>Welcome</h1>
         <p class="lead">
           Receipts helps you notice patterns in how your body feels, using the data your watch
           already collects. You tap what you feel, and we gently compare it to <strong>your own
@@ -65,11 +71,12 @@
     <!-- Connect your wearable -->
     <section id="screen-connect" class="screen" hidden aria-label="Connect your wearable">
       <div class="card">
+        <span class="eyebrow">Step 2 · Your data</span>
         <h2>Connect your wearable</h2>
         <p class="muted">Bring the data your watch already collects. Pick one:</p>
 
         <div class="privacy-note" role="note">
-          <strong>🔒 Your data stays on this device.</strong>
+          <strong>Your data stays on this device.</strong>
           Files are read right here in your browser. Nothing is uploaded to a server or saved anywhere.
           Refreshing the page clears it.
         </div>
@@ -127,7 +134,7 @@
         <p id="tap-confirm" class="tap-confirm" role="status" aria-live="polite"></p>
       </div>
       <div class="edit-symptoms-link">
-        <button id="open-watch-btn" class="btn btn-secondary">⌚ Open watch view</button>
+        <button id="open-watch-btn" class="btn btn-secondary">Open watch view</button>
         <button id="edit-symptoms-btn" class="btn btn-link">Edit my symptoms</button>
       </div>
     </section>
@@ -154,6 +161,7 @@
     <!-- SCREEN 2: Timeline -->
     <section id="screen-timeline" class="screen" hidden aria-label="Your 60-day timeline">
       <div class="card">
+        <span class="eyebrow">Timeline</span>
         <h2 id="timeline-title">Your last 60 days</h2>
         <p class="muted">Your body signals over time — with the moments you tapped marked along the top.</p>
         <p id="timeline-missing" class="hint"></p>
@@ -166,7 +174,8 @@
     <!-- SCREEN 3: Trigger Detective -->
     <section id="screen-detective" class="screen" hidden aria-label="Trigger Detective">
       <div class="card">
-        <h2>Trigger Detective 🔎</h2>
+        <span class="eyebrow">Trigger Detective</span>
+        <h2>What comes before your symptoms</h2>
         <p class="muted">The strongest patterns we found in what tends to happen <em>before</em> your
           symptoms — always compared to your own usual.</p>
         <div id="findings-list"><!-- built by app.js --></div>
@@ -176,7 +185,7 @@
     <!-- SCREEN 4: Today -->
     <section id="screen-today" class="screen" hidden aria-label="Today">
       <div class="card today-card" id="today-card">
-        <h2>Today</h2>
+        <span class="eyebrow">Today</span>
         <div id="today-content"><!-- built by app.js --></div>
       </div>
     </section>
@@ -205,19 +214,19 @@
   <!-- Bottom navigation (thumb-friendly) -->
   <nav class="bottom-nav" aria-label="Main navigation">
     <button class="nav-btn" data-screen="screen-tap" aria-label="Log a symptom">
-      <span class="nav-icon" aria-hidden="true">➕</span><span class="nav-label">Log</span>
+      <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg><span class="nav-label">Log</span>
     </button>
     <button class="nav-btn" data-screen="screen-timeline" aria-label="Timeline">
-      <span class="nav-icon" aria-hidden="true">📈</span><span class="nav-label">Timeline</span>
+      <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 4 4-7 5 5"/><path d="M3 21h18"/></svg><span class="nav-label">Timeline</span>
     </button>
     <button class="nav-btn" data-screen="screen-detective" aria-label="Trigger Detective">
-      <span class="nav-icon" aria-hidden="true">🔎</span><span class="nav-label">Patterns</span>
+      <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/><path d="M7.5 11l2 2 3.5-4"/></svg><span class="nav-label">Patterns</span>
     </button>
     <button class="nav-btn" data-screen="screen-today" aria-label="Today">
-      <span class="nav-icon" aria-hidden="true">☀️</span><span class="nav-label">Today</span>
+      <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3a9 9 0 1 1-9 9"/><path d="M12 7a5 5 0 1 1-5 5"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/></svg><span class="nav-label">Today</span>
     </button>
     <button class="nav-btn" data-screen="screen-brief" aria-label="Pre-appointment brief">
-      <span class="nav-icon" aria-hidden="true">🧾</span><span class="nav-label">Brief</span>
+      <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg><span class="nav-label">Brief</span>
     </button>
   </nav>
 

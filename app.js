@@ -138,8 +138,8 @@
     symptomSet.forEach(s => {
       const btn = document.createElement("button");
       btn.className = "tap-btn";
-      btn.style.borderColor = hexA(s.color, 0.5);
-      btn.innerHTML = `<span class="tap-icon">${s.icon}</span><span>${escapeHtml(s.label)}</span>`;
+      btn.style.setProperty("--sym", s.color); // colored edge on the card
+      btn.innerHTML = `<span class="tap-icon" aria-hidden="true">${s.icon}</span><span>${escapeHtml(s.label)}</span>`;
       btn.addEventListener("click", () => logTap(s));
       wrap.appendChild(btn);
     });
@@ -265,8 +265,34 @@
     const cls = noData ? "neutral" : (result.pacing ? "pace" : "good");
     const headline = noData ? "Not enough data for today"
       : (result.pacing ? "Looks like a pacing day" : "Looks like a good day");
+    // Ring: how many of today's signals sit in the person's usual range.
+    const n = result.checked.length;
+    const off = new Set(result.reasons.map(r => r.k));
+    const inRange = n - off.size;
+    const ringColor = noData ? "var(--line)" : (result.pacing ? "var(--pace)" : "var(--accent)");
+    const C = 2 * Math.PI * 92;
+    const frac = n ? inRange / n : 0;
+    const ring =
+      `<div class="today-ring" role="img" aria-label="${inRange} of ${n} signals in your usual range today">` +
+      `<svg viewBox="0 0 220 220" aria-hidden="true">` +
+      `<circle class="ring-track" cx="110" cy="110" r="92" fill="none" stroke-width="16"/>` +
+      `<circle class="ring-fill" cx="110" cy="110" r="92" fill="none" stroke-width="16" stroke-linecap="round"` +
+      ` stroke="${ringColor}" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - frac)).toFixed(1)}"/>` +
+      `</svg><div class="ring-center"><div class="ring-num">${n ? inRange : "–"}<small>/${n || "–"}</small></div>` +
+      `<div class="ring-label">signals in your usual range</div></div></div>`;
+
+    // One chip per signal we could compare today.
+    const NAMES = { recovery: "Recovery", hrv: "HRV", sleep: "Sleep", restingHr: "Resting HR" };
+    const VALUE = { recovery: d => d.recovery_score, hrv: d => d.hrv_ms + " ms", sleep: d => d.sleep_hours + " h", restingHr: d => d.resting_hr_bpm + " bpm" };
+    const chips = result.checked.map(k =>
+      `<div class="signal-chip ${off.has(k) ? "off" : "ok"}"><span class="eyebrow">${NAMES[k]}</span>` +
+      `<div class="val">${escapeHtml(String(VALUE[k](result.today)))}</div>` +
+      `<div class="state">${off.has(k) ? "Outside your usual" : "In your usual range"}</div></div>`).join("");
+
     wrap.innerHTML =
+      ring +
       `<div class="today-banner ${cls}">${headline}</div>` +
+      (chips ? `<div class="signal-chips">${chips}</div>` : "") +
       `<p class="today-why">${escapeHtml(msg)}${aiTag(written.ai)}</p>` +
       `<p class="disclaimer-note">This is not a diagnosis — your clinician decides.</p>`;
   }

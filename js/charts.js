@@ -10,13 +10,17 @@
   const DS = window.RECEIPTS_DATASOURCE;
   const SYM = window.RECEIPTS_SYMPTOMS;
 
-  const BLUE = "#1B3A5B", MIDBLUE = "#3E7CB1", LIGHTBLUE = "#6BA8D6";
+  // Dark-screen palette (wearable style). On the white brief, renderMini swaps to PAPER.
+  const BLUE = "#EEF2F6", MIDBLUE = "#7FB2FF", LIGHTBLUE = "#5CE1C6";
+  const GRID = "rgba(255,255,255,0.06)";
+  const PAPER = { ink: "#111820", a: "#1F8F78", b: "#9FB3C2", grid: "#E6EAEE", text: "#4B5866" };
   const charts = {}; // keep references so we can destroy/rebuild
 
   function destroy(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
 
-  Chart.defaults.font.size = 14;
-  Chart.defaults.color = "#46617A";
+  Chart.defaults.font.size = 13;
+  Chart.defaults.font.family = "Inter, -apple-system, sans-serif";
+  Chart.defaults.color = "#A3AFBC";
 
   // ---- 60-day timeline ----
   // Lines the timeline can draw. Each is only offered if the data has it.
@@ -24,7 +28,7 @@
     { key: "restingHr", field: "resting_hr_bpm", label: "Resting HR (bpm)", color: BLUE,      axis: "y" },
     { key: "hrv",       field: "hrv_ms",         label: "HRV (ms)",         color: MIDBLUE,   axis: "y" },
     { key: "sleep",     field: "sleep_hours",    label: "Sleep (h)",        color: LIGHTBLUE, axis: "y1" },
-    { key: "steps",     field: "steps",          label: "Steps",            color: "#5BA38A", axis: "y2" }
+    { key: "steps",     field: "steps",          label: "Steps",            color: "#F2B544", axis: "y2" }
   ];
 
   function availableLines(D) {
@@ -62,7 +66,7 @@
         type: "scatter",
         label: group.info.label + (group.live ? " (just logged)" : ""),
         data: group.pts,
-        borderColor: group.live ? "#16293B" : group.info.color,
+        borderColor: group.live ? "#FFFFFF" : group.info.color,
         backgroundColor: group.info.color,
         borderWidth: group.live ? 3 : 1,
         pointRadius: group.live ? 11 : 5,
@@ -84,8 +88,8 @@
           } }
         },
         scales: {
-          x: { ticks: { maxTicksLimit: 8 }, grid: { color: "#EAF1F8" } },
-          y: { display: usesAxis("y"), position: "left", grid: { color: "#EAF1F8" }, title: { display: true, text: "HR / HRV" } },
+          x: { ticks: { maxTicksLimit: 8 }, grid: { color: GRID } },
+          y: { display: usesAxis("y"), position: "left", grid: { color: GRID }, title: { display: true, text: "HR / HRV" } },
           y1: { display: usesAxis("y1"), position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Sleep (h)" }, suggestedMin: 0, suggestedMax: 10 },
           y2: { display: usesAxis("y2") && !usesAxis("y1"), position: "right", grid: { drawOnChartArea: !usesAxis("y") }, title: { display: true, text: "Steps" }, beginAtZero: true },
           // Hidden lane at the top of the chart where symptom markers sit.
@@ -100,51 +104,48 @@
   // ---- Mini-chart for a finding ----
   function renderMini(canvasId, chartSpec) {
     destroy(canvasId);
-    const ctx = document.getElementById(canvasId).getContext("2d");
+    const el = document.getElementById(canvasId);
+    const ctx = el.getContext("2d");
+    // The brief is a white "paper" page, so it gets dark-on-light colors.
+    const paper = !!el.closest(".brief-page");
+    const hit = paper ? PAPER.a : LIGHTBLUE;          // days that match the pattern
+    const rest = paper ? PAPER.b : "#3A4757";         // other days
+    const text = paper ? PAPER.text : "#A3AFBC";
+    const grid = paper ? PAPER.grid : GRID;
 
     if (chartSpec.type === "doughnut") {
       charts[canvasId] = new Chart(ctx, {
         type: "doughnut",
-        data: {
-          labels: chartSpec.labels,
-          datasets: [{ data: chartSpec.values, backgroundColor: [BLUE, LIGHTBLUE] }]
-        },
-        options: { responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { position: "bottom" } } }
+        data: { labels: chartSpec.labels, datasets: [{ data: chartSpec.values, backgroundColor: [hit, rest], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: "68%",
+          plugins: { legend: { position: "bottom", labels: { color: text, boxWidth: 12 } } } }
       });
       return;
     }
 
-    // bar chart with a reference line (e.g., 30 bpm or 6 h)
+    // Bar chart with a dashed reference line (e.g. 30 bpm or 6 h).
+    const isSleep = (chartSpec.yLabel || "").indexOf("Sleep") >= 0;
     const colors = chartSpec.values.map(v =>
-      (chartSpec.reference != null)
-        ? ((chartSpec.yLabel || "").indexOf("Sleep") >= 0
-            ? (v < chartSpec.reference ? MIDBLUE : LIGHTBLUE)
-            : (v >= chartSpec.reference ? MIDBLUE : LIGHTBLUE))
-        : MIDBLUE
-    );
+      chartSpec.reference == null ? hit
+        : (isSleep ? v < chartSpec.reference : v >= chartSpec.reference) ? hit : rest);
 
     charts[canvasId] = new Chart(ctx, {
       type: "bar",
-      data: { labels: chartSpec.labels, datasets: [{ data: chartSpec.values, backgroundColor: colors }] },
+      data: { labels: chartSpec.labels, datasets: [{ data: chartSpec.values, backgroundColor: colors, borderRadius: 6, maxBarThickness: 26 }] },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          annotation: false
-        },
+        plugins: { legend: { display: false } },
         scales: {
-          x: { grid: { display: false }, ticks: { maxTicksLimit: 6 } },
-          y: { grid: { color: "#EAF1F8" }, title: { display: true, text: chartSpec.yLabel || "" },
-               beginAtZero: true }
+          x: { grid: { display: false }, ticks: { maxTicksLimit: 6, color: text } },
+          y: { grid: { color: grid }, ticks: { color: text }, title: { display: true, text: chartSpec.yLabel || "", color: text }, beginAtZero: true }
         }
       },
-      plugins: [refLinePlugin(chartSpec.reference)]
+      plugins: [refLinePlugin(chartSpec.reference, paper ? PAPER.ink : "#F2B544")]
     });
   }
 
   // Draws a dashed reference line across a bar chart (e.g. the 30 bpm / 6 h marker).
-  function refLinePlugin(refValue) {
+  function refLinePlugin(refValue, color) {
     return {
       id: "refline_" + Math.random().toString(36).slice(2),
       afterDraw(chart) {
@@ -152,7 +153,7 @@
         const { ctx, chartArea: { left, right }, scales: { y } } = chart;
         const yPos = y.getPixelForValue(refValue);
         ctx.save();
-        ctx.strokeStyle = "#B15B7C"; ctx.setLineDash([6, 5]); ctx.lineWidth = 2;
+        ctx.strokeStyle = color || "#F2B544"; ctx.setLineDash([6, 5]); ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(left, yPos); ctx.lineTo(right, yPos); ctx.stroke();
         ctx.restore();
       }

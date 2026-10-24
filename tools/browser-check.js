@@ -113,6 +113,12 @@ async function waitFor(expr, ms = 5000) {
   check("timeline chart drew", await evaluate("!!Chart.getChart('timeline-chart')"));
   check("detective shows findings", (await evaluate("document.querySelectorAll('#findings-list .finding').length")) >= 2);
   check("brief has the disclaimer", await evaluate("document.getElementById('brief-page').innerText.includes('not a diagnosis')"));
+  await evaluate("document.querySelector('[data-screen=\"screen-today\"]').click()");
+  await sleep(300);
+  check("Today shows the score ring", await evaluate("!!document.querySelector('#today-content .today-ring .ring-fill')"),
+        await evaluate("(document.querySelector('.today-ring')||{}).getAttribute ? document.querySelector('.today-ring').getAttribute('aria-label') : ''"));
+  check("bundled fonts loaded", await evaluate("document.fonts.ready.then(() => document.fonts.check('700 20px \"Space Grotesk\"') && document.fonts.check('16px Inter'))"));
+  await shot("today");
 
   // Watch view: tap on the wrist -> appears on the timeline
   await evaluate("document.querySelector('[data-screen=\"screen-tap\"]').click()");
