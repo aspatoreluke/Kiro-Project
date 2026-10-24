@@ -1,0 +1,13 @@
+{
+  "name": "receipts",
+  "private": true,
+  "description": "Receipts — turning wearable data into better healthcare conversations. Static site; npm is only used for tests.",
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "test:props": "node --test tests/*.props.test.js",
+    "check:browser": "node tools/browser-check.js"
+  },
+  "devDependencies": {
+    "fast-check": "4.10.2"
+  }
+}

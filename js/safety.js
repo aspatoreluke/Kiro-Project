@@ -12,9 +12,27 @@
    ============================================================ */
 
 (function () {
+  // Safe phrases that contain a "trigger" word but are NOT a diagnosis, like
+  // our own required disclaimer. They're removed before scanning, so a real
+  // diagnosis elsewhere in the same text is still caught.
+  // (Found by property-based testing: the guard used to block
+  //  "This is not a diagnosis — your clinician decides.")
+  const SAFE_PHRASES = [
+    /\bnot an? (?:medical )?diagnosis\b/gi,
+    /\bisn'?t an? diagnosis\b/gi,
+    /\bhard[- ]to[- ]diagnose\b/gi,
+    /\b(?:never|cannot|can'?t|won'?t|doesn'?t|does not|do not|don'?t) diagnose\b/gi
+  ];
+
+  // "You have" about something the person DID ("you have logged 9 taps") is fine.
+  // "You have <anything else>" is treated as a possible diagnosis.
+  const DID_VERBS = "been|felt|logged|slept|noticed|recorded|tapped|tracked|seen|shared|shown|walked";
+
   // Phrases that assert a diagnosis or medical conclusion.
   const DIAGNOSTIC_PATTERNS = [
-    /\byou (?:have|'ve got|are suffering from)\b/i,
+    new RegExp(`\\byou(?: have|'ve) (?!(?:${DID_VERBS})\\b)`, "i"),
+    /\byou(?: have|'ve)$/i,
+    /\b(?:are|'re|been) suffering from\b/i,
     /\bthis (?:is|means you have|confirms)\b.*\b(?:disease|disorder|syndrome|condition)\b/i,
     /\bdiagnos(?:e|is|ed|ing)\b/i,
     /\byou (?:are|'re) (?:diabetic|hypertensive|anemic)\b/i,
@@ -44,7 +62,8 @@
 
   function scan(text) {
     const problems = [];
-    const t = String(text || "");
+    let t = String(text || "");
+    SAFE_PHRASES.forEach(re => { t = t.replace(re, " · "); });
     DIAGNOSTIC_PATTERNS.forEach(re => { if (re.test(t)) problems.push({ kind: "diagnosis", match: (t.match(re) || [])[0] }); });
     CONCLUSION_DISEASES.forEach(re => { if (re.test(t)) problems.push({ kind: "diagnosis", match: (t.match(re) || [])[0] }); });
     TREATMENT_PATTERNS.forEach(re => { if (re.test(t)) problems.push({ kind: "treatment", match: (t.match(re) || [])[0] }); });
