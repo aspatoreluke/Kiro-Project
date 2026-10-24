@@ -115,24 +115,24 @@ track progress together.
 ## v2 Tasks (judging strengthening) — do in priority order
 
 ### Priority 1 — Wearable integration
-- [ ] 20. Standard data model + datasource switch
+- [x] 20. Standard data model + datasource switch
   - `js/adapters/standard-model.js` (shape + validator + availability flags); `js/datasource.js`
     (demo vs uploaded; one API the app reads). Route existing screens through the datasource.
   - _Requirements: 13, 14_
-- [ ] 21. WHOOP CSV adapter
+- [x] 21. WHOOP CSV adapter
   - `js/adapters/whoop.js`: parse WHOOP CSV → standard model; flexible headers; skip bad rows.
   - _Requirements: 13_
-- [ ] 22. Apple Health adapter
+- [x] 22. Apple Health adapter
   - `js/adapters/apple-health.js`: parse `export.xml` (and zipped export via JSZip) → standard model.
   - _Requirements: 13_
-- [ ] 23. Connect-your-wearable screen
+- [x] 23. Connect-your-wearable screen
   - Upload (WHOOP/Apple), "Use demo data (Maya)" default, "Connect WHOOP (coming soon)" explainer,
     privacy note, missing-metric messaging.
   - _Requirements: 12, 14_
-- [ ] 24. Watch view
+- [x] 24. Watch view
   - Smartwatch-styled tap screen; taps appear on the timeline.
   - _Requirements: 15_
-- [ ] 25. .gitignore sample-data rules
+- [x] 25. .gitignore sample-data rules
   - Ignore `sample-data/`, `*.export.xml`, personal export patterns; never commit real exports.
   - _Requirements: 18.5_
 
