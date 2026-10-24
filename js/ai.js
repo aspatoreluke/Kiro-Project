@@ -117,6 +117,12 @@
     state = { status: "pending", key, text: null, provider: null, accepted: 0, rejected: 0, reason: null };
     notify();
 
+    // Static mirrors (e.g. GitHub Pages) have no AI function: use templates quietly.
+    if (!fetchImpl && root.location && /\.github\.io$/.test(root.location.hostname)) {
+      state = { status: "failed", key, text: null, provider: null, accepted: 0, rejected: 0, reason: "no-ai-on-this-host" };
+      notify();
+      return state;
+    }
     const doFetch = fetchImpl || root.fetch;
     const ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
     const timer = setTimeout(() => ctrl && ctrl.abort(), TIMEOUT_MS);
