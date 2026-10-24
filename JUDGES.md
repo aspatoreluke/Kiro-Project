@@ -19,9 +19,45 @@ commit, and every bug we caught is explained in the commit that fixed it.
 | **MCP server** | `.kiro/settings/mcp.json` | Official `fetch` server, used to read Apple and WHOOP export docs while checking our adapters. |
 | **Property-based testing** | `tests/*.props.test.js` | 25 properties, each run on hundreds of random messy inputs. Caught 3 real bugs. |
 | **Autopilot** | the whole build | Kiro worked task by task, ran tests and a headless browser itself, and committed after each task. |
-| **Powers** | not used | No power fit this project, and none were installed. We'd rather say so than force one in. |
+| **Kiro CLI** + **custom agent** | `.kiro/agents/plain-language-reviewer.json` | Ran a read-only reviewer headless against every sentence the app shows. 3 rounds, real fixes. |
+| **Power** | Netlify Deployment (installed with `kiro-cli powers install`) | Guided a review of our Netlify setup → security headers and script integrity hashes. |
 
 ---
+
+## Which Kiro tools we used, and how they differed
+
+We used **two**: the **Kiro IDE** and the **Kiro CLI**. We didn't try Kiro Web or Crew.
+
+**Kiro IDE: where we built everything.** It's where we talked, approved the spec, and watched
+the agent work. As non-coders, being able to see each file change, read the spec next to the
+chat, and stop or redirect at any moment was what made it feel safe. Kiro (autopilot) ran our
+tests, a headless browser, Git, and the MCP server itself.
+
+**Kiro CLI: one focused, repeatable job.** We installed it near the end
+(`curl -fsSL https://cli.kiro.dev/install | bash`, then `kiro-cli login` with GitHub) for a task
+that didn't need a conversation:
+
+- We made a **custom agent** (`.kiro/agents/plain-language-reviewer.json`). It's read-only, and
+  its "resources" are our accessibility and safety steering files plus a file of every sentence
+  the app shows.
+- We ran it headless, with no chat window:
+  `kiro-cli chat --no-interactive --agent plain-language-reviewer --trust-tools=fs_read "Review docs/app-copy.txt"`.
+- It answered in about 15 seconds with a table: sentence, rule broken, suggested rewrite.
+- Over 3 rounds it caught real issues: "bpm" on patient screens, a 42-word sentence, and a
+  **72-word "pacing day" message** that our demo never shows, so none of us had read it. Log in
+  [`docs/plain-language-review.md`](./docs/plain-language-review.md).
+
+| | Kiro IDE | Kiro CLI |
+|---|---|---|
+| Best for | Building: back-and-forth, approving specs, watching changes | One job, the same way every time; scripts and CI |
+| How it felt | A teammate you talk to | A command you run |
+| What it shared | the same `.kiro/` folder: steering, agents, MCP config, hooks | the same `.kiro/` folder |
+| Safety controls | approve as you go | `--trust-tools=fs_read`: this agent could only read |
+| Unique to it, for us | spec panes, diffs, autopilot | custom agent run headless; installing a power from the terminal |
+
+The surprise: because both read the same `.kiro/` folder, the steering we'd written for the IDE
+became the CLI reviewer's rulebook with no extra work. The same agent could run on every pull
+request in CI.
 
 ## 1. Spec-driven development
 
@@ -92,6 +128,35 @@ it from our MCP config and asks it for documentation pages. We used it to check 
 Honest note: Kiro loads MCP servers when a session starts. This chat started before we added
 it, so here we drove the server through our own MCP client. From the next session on, Kiro can
 call it directly.
+
+## 4b. Kiro powers: Netlify Deployment
+
+We looked through the power catalog for a real fit, not a badge. Most powers are for stacks we
+don't use (AWS, databases, payments). There was nothing for accessibility, health data, or our
+test tools. One fit exactly: **Netlify Deployment** (by Netlify), since we deploy on Netlify.
+
+- **Installed** with the Kiro CLI: `kiro-cli powers install netlify-deployment`.
+- **Used** in a headless CLI run that asked for a review of `netlify.toml`, our AI function, and
+  `index.html` against Netlify best practices, without deploying or editing anything.
+- **What we applied:**
+  - A strict **Content Security Policy**: only our files, the chart library's CDN, and our own
+    AI function may load. No third-party scripts, and no embedding the app in other sites.
+  - `X-Frame-Options`, `nosniff`, `no-referrer`, and a `Permissions-Policy` that turns off
+    camera, microphone, and location.
+  - **Integrity hashes** on Chart.js and JSZip, so a tampered CDN copy is refused.
+- **What we declined:** year-long "immutable" caching. Our file names don't change between
+  versions, so it would keep old safety wording in people's browsers.
+- **What the policy caught right away:** Netlify adds a "Powered by Netlify" badge script to free
+  sites. Our new policy blocked it, exactly as designed. We turned the badge off rather than
+  loosening the policy, since a health app shouldn't carry third-party scripts.
+
+Honest notes:
+
+- The power's own guide is mostly about deploying with the Netlify CLI and keeping secrets in
+  environment variables, which we already did. The header advice came from the Kiro CLI agent
+  working with the power loaded, so we checked every change ourselves and verified it on the
+  live site.
+- This IDE chat only picks up powers when a session starts, so the CLI is where we used it.
 
 ## 5. Wearable integration and the adapter design
 
@@ -180,6 +245,8 @@ Specs, hooks, tests, the browser walk-through, and MCP each caught something:
 8. The baseline could go negative (property test).
 9. The hooks scanned nothing from the wrong folder (hook testing).
 10. WHOOP naps could replace a night's sleep (MCP docs).
+11. A 72-word "pacing day" sentence no one had seen, plus jargon on patient screens (CLI reviewer agent).
+12. No security headers on a public health app (Netlify power review).
 
 ---
 
@@ -201,7 +268,7 @@ do, in plain English, before anything was built.
   Hooks re-checked it on every save.
 - **It's slower at the start.** We spent the first stretch on documents instead of a demo. It
   paid off: when we added wearable uploads and live AI hours later, nothing earlier broke, and
-  the checks caught ten real problems.
+  the checks caught twelve real problems.
 
 For a health app built by people who can't code, that's the difference between hoping it's safe
 and being able to show it is.
