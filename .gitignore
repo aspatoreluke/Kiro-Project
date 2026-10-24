@@ -14,3 +14,15 @@ node_modules/
 
 # Netlify local state
 .netlify/
+
+# REAL PERSONAL HEALTH DATA — never commit.
+# Put your own exports in sample-data/. These patterns block them anywhere.
+sample-data/
+apple_health_export/
+export.xml
+export_cda.xml
+export.zip
+*.export.xml
+*whoop*.csv
+*oura*.csv
+*fitbit*.csv
