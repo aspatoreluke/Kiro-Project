@@ -202,6 +202,50 @@ label { display: block; font-weight: 600; margin-bottom: 6px; }
 .today-banner.good { background: var(--good); color: var(--good-ink); }
 .today-banner.neutral { background: #E8F1FA; color: var(--primary); }
 
+/* Watch view — a smartwatch drawn in CSS */
+.watch-device {
+  position: relative; width: 250px; margin: 18px auto 22px;
+  padding: 14px; border-radius: 64px; background: #2B3440;
+  box-shadow: 0 14px 30px rgba(27, 58, 91, 0.30), inset 0 0 0 2px #46525F;
+}
+.watch-device::before, .watch-device::after { /* strap */
+  content: ""; position: absolute; left: 50%; transform: translateX(-50%);
+  width: 150px; height: 46px; background: #3E7CB1; z-index: -1;
+}
+.watch-device::before { top: -40px; border-radius: 16px 16px 0 0; }
+.watch-device::after  { bottom: -40px; border-radius: 0 0 16px 16px; }
+.watch-crown {
+  position: absolute; right: -8px; top: 70px; width: 10px; height: 34px;
+  background: #46525F; border-radius: 4px;
+}
+.watch-face {
+  position: relative; background: #000; border-radius: 50px; height: 270px;
+  padding: 14px 12px; color: #fff; overflow: hidden;
+}
+.watch-face-time { text-align: right; font-size: 0.95rem; font-weight: 600; color: #8FC1EC; padding-right: 8px; }
+.watch-face-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px;
+  max-height: 222px; overflow-y: auto; padding-bottom: 6px;
+}
+.watch-btn {
+  border: none; border-radius: 22px; padding: 10px 4px; min-height: 64px;
+  color: #fff; font-size: 0.8rem; font-weight: 700; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+}
+.watch-btn .watch-icon { font-size: 1.4rem; }
+.watch-btn:active { transform: scale(0.94); }
+.watch-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.watch-face-done {
+  position: absolute; inset: 0; background: #0F3A2E; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 6px; font-size: 1.1rem; font-weight: 700;
+  text-align: center; padding: 16px;
+}
+.watch-face-done[hidden] { display: none; }
+.watch-check {
+  width: 64px; height: 64px; border-radius: 50%; background: #8FBFB0; color: #0F3A2E;
+  display: flex; align-items: center; justify-content: center; font-size: 2.2rem;
+}
+
 /* Data source chip in the header */
 .data-chip {
   margin-top: 8px; background: #E8F1FA; color: var(--primary); border: none;

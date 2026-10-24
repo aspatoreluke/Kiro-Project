@@ -25,9 +25,11 @@
   // ---------- Navigation ----------
   function showScreen(id) {
     $$(".screen").forEach(s => { s.hidden = (s.id !== id); });
-    $$(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.screen === id));
+    const navId = id === "screen-watch" ? "screen-tap" : id; // watch lives under "Log"
+    $$(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.screen === navId));
     // Lazy render per screen.
     if (id === "screen-tap") renderTapButtons();
+    if (id === "screen-watch") renderWatch();
     if (id === "screen-timeline") renderTimeline();
     if (id === "screen-detective") renderDetective();
     if (id === "screen-today") renderToday();
@@ -120,6 +122,35 @@
       wrap.appendChild(btn);
     });
   }
+  // ---------- Watch view ----------
+  $("#open-watch-btn").addEventListener("click", () => showScreen("screen-watch"));
+  $("#watch-to-timeline-btn").addEventListener("click", () => showScreen("screen-timeline"));
+  let watchTimer = null;
+
+  function renderWatch() {
+    $("#watch-face-time").textContent = nowLabel().replace(/ (AM|PM)$/, "");
+    $("#watch-face-done").hidden = true;
+    $("#watch-to-timeline-btn").hidden = true;
+    const grid = $("#watch-face-grid");
+    grid.innerHTML = "";
+    symptomSet.forEach(s => {
+      const btn = document.createElement("button");
+      btn.className = "watch-btn";
+      btn.style.background = s.color;
+      btn.setAttribute("aria-label", "Log " + s.label);
+      btn.innerHTML = `<span class="watch-icon" aria-hidden="true">${s.icon}</span><span>${escapeHtml(s.label)}</span>`;
+      btn.addEventListener("click", () => {
+        DS.logTap(s.id);
+        $("#watch-face-done-text").textContent = `${s.label} logged · ${nowLabel()}`;
+        $("#watch-face-done").hidden = false;
+        $("#watch-to-timeline-btn").hidden = false;
+        clearTimeout(watchTimer);
+        watchTimer = setTimeout(() => { $("#watch-face-done").hidden = true; }, 2200);
+      });
+      grid.appendChild(btn);
+    });
+  }
+
   function logTap(symptom) {
     DS.logTap(symptom.id);
     $("#tap-confirm").textContent = `Logged "${symptom.label}" at ${nowLabel()} \u2713 \u2014 it's on your timeline now`;

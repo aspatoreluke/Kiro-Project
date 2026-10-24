@@ -124,7 +124,27 @@
         <p id="tap-confirm" class="tap-confirm" role="status" aria-live="polite"></p>
       </div>
       <div class="edit-symptoms-link">
+        <button id="open-watch-btn" class="btn btn-secondary">⌚ Open watch view</button>
         <button id="edit-symptoms-btn" class="btn btn-link">Edit my symptoms</button>
+      </div>
+    </section>
+
+    <!-- Watch view: the same one-tap logging, styled like a smartwatch face -->
+    <section id="screen-watch" class="screen" hidden aria-label="Watch view">
+      <p class="muted center">This is what logging looks like on your wrist.</p>
+      <div class="watch-device">
+        <div class="watch-crown" aria-hidden="true"></div>
+        <div class="watch-face" id="watch-face">
+          <div class="watch-face-time" id="watch-face-time">10:09</div>
+          <div class="watch-face-grid" id="watch-face-grid"><!-- built by app.js --></div>
+          <div class="watch-face-done" id="watch-face-done" hidden role="status" aria-live="polite">
+            <div class="watch-check" aria-hidden="true">✓</div>
+            <div id="watch-face-done-text">Logged</div>
+          </div>
+        </div>
+      </div>
+      <div class="center">
+        <button id="watch-to-timeline-btn" class="btn btn-primary" hidden>See it on your timeline →</button>
       </div>
     </section>
 

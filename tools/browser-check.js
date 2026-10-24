@@ -37,6 +37,13 @@ async function evaluate(expr) {
   if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description || r.exceptionDetails.text);
   return r.result.value;
 }
+// Optional screenshots: set SHOTS=/some/folder
+async function shot(name) {
+  if (!process.env.SHOTS) return;
+  await sleep(500);
+  const { data } = await send("Page.captureScreenshot", { format: "png", captureBeyondViewport: false });
+  fs.writeFileSync(path.join(process.env.SHOTS, name + ".png"), Buffer.from(data, "base64"));
+}
 function check(name, ok, detail) {
   if (!ok) fails++;
   console.log(`${ok ? "PASS" : "FAIL"}: ${name}${detail !== undefined ? "  -> " + detail : ""}`);
@@ -72,6 +79,9 @@ async function waitFor(expr, ms = 5000) {
     }
   });
   await send("Runtime.enable"); await send("Log.enable"); await send("Page.enable"); await send("DOM.enable");
+  // Behave like a phone (iPhone 14-sized screen, touch).
+  await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
+  await send("Emulation.setTouchEmulationEnabled", { enabled: true });
   await send("Page.navigate", { url: URL_TO_TEST });
   await waitFor("document.readyState === 'complete' && !!window.RECEIPTS_APP", 15000);
 
@@ -86,6 +96,7 @@ async function waitFor(expr, ms = 5000) {
   check("setup leads to Connect your wearable", await evaluate(visible("screen-connect")));
   check("privacy note is shown", await evaluate("document.querySelector('.privacy-note').innerText.includes('stays on this device')"));
   await evaluate("document.getElementById('whoop-connect-btn').click()");
+  await shot("connect");
   check("WHOOP 'coming soon' explains the API next step", await evaluate("!document.getElementById('whoop-soon').hidden && /developer API/.test(document.getElementById('whoop-soon').innerText)"));
 
   // 3. Demo path
@@ -102,6 +113,36 @@ async function waitFor(expr, ms = 5000) {
   check("timeline chart drew", await evaluate("!!Chart.getChart('timeline-chart')"));
   check("detective shows findings", (await evaluate("document.querySelectorAll('#findings-list .finding').length")) >= 2);
   check("brief has the disclaimer", await evaluate("document.getElementById('brief-page').innerText.includes('not a diagnosis')"));
+
+  // Watch view: tap on the wrist -> appears on the timeline
+  await evaluate("document.querySelector('[data-screen=\"screen-tap\"]').click()");
+  await evaluate("document.getElementById('open-watch-btn').click()");
+  check("watch view opens", await evaluate(visible("screen-watch")));
+  const before = await evaluate("RECEIPTS_DATASOURCE.get().symptomTaps.length");
+  await evaluate("document.querySelector('#watch-face-grid .watch-btn').click()");
+  check("watch shows a calm confirmation", await evaluate("!document.getElementById('watch-face-done').hidden"),
+        await evaluate("document.getElementById('watch-face-done-text').innerText"));
+  await shot("watch-logged");
+  // Layout checks on a phone-width (390px) window
+  await evaluate("document.getElementById('watch-face-done').hidden = true");
+  const layout = await evaluate(`(() => {
+    const btns = [...document.querySelectorAll('#watch-face-grid .watch-btn')].map(b => b.getBoundingClientRect());
+    const face = document.getElementById('watch-face').getBoundingClientRect();
+    return {
+      pageWidth: document.documentElement.scrollWidth, viewport: window.innerWidth,
+      minBtnH: Math.min(...btns.map(r => r.height)), minBtnW: Math.min(...btns.map(r => r.width)),
+      insideFace: btns.slice(0, 4).every(r => r.left >= face.left && r.right <= face.right)
+    };
+  })()`);
+  check("no sideways scrolling on a phone", layout.pageWidth <= layout.viewport, `${layout.pageWidth}px page in ${layout.viewport}px window`);
+  check("watch buttons are big enough to tap (44px+)", layout.minBtnH >= 44 && layout.minBtnW >= 44, `${Math.round(layout.minBtnW)}x${Math.round(layout.minBtnH)}`);
+  check("watch buttons sit inside the watch face", layout.insideFace);
+  check("watch tap was recorded", (await evaluate("RECEIPTS_DATASOURCE.get().symptomTaps.length")) === before + 1);
+  await evaluate("document.getElementById('watch-to-timeline-btn').click()");
+  await sleep(300);
+  check("timeline shows the just-logged tap", await evaluate(
+    "Chart.getChart('timeline-chart').data.datasets.some(d => /just logged/.test(d.label))"));
+  await shot("timeline-after-watch-tap");
 
   // 4. Optional: upload a real file through the actual file input
   if (UPLOAD) {
