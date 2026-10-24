@@ -200,6 +200,16 @@ label { display: block; font-weight: 600; margin-bottom: 6px; }
 }
 .today-banner.pace { background: var(--pace); color: var(--pace-ink); }
 .today-banner.good { background: var(--good); color: var(--good-ink); }
+.today-banner.neutral { background: #E8F1FA; color: var(--primary); }
+
+/* "Not available with this data" box */
+.missing-box {
+  background: #F4F8FC; border: 2px dashed var(--line); border-radius: 14px;
+  padding: 14px 16px; margin-top: 14px;
+}
+.missing-box h3 { margin: 0 0 6px; font-size: 1rem; color: var(--primary); }
+.missing-box ul { margin: 0; padding-left: 18px; }
+.missing-box li { margin: 6px 0; font-size: 0.95rem; }
 .today-why { color: var(--ink-soft); }
 
 /* Brief */

@@ -73,8 +73,9 @@
     <!-- SCREEN 2: Timeline -->
     <section id="screen-timeline" class="screen" hidden aria-label="Your 60-day timeline">
       <div class="card">
-        <h2>Your last 60 days</h2>
-        <p class="muted">Resting heart rate, HRV, and sleep — with the moments you tapped marked on top.</p>
+        <h2 id="timeline-title">Your last 60 days</h2>
+        <p class="muted">Your body signals over time — with the moments you tapped marked along the top.</p>
+        <p id="timeline-missing" class="hint"></p>
         <div class="chart-toggles" id="timeline-toggles"><!-- built by app.js --></div>
         <div class="chart-wrap"><canvas id="timeline-chart" height="260"></canvas></div>
         <div id="timeline-legend" class="symptom-legend"><!-- built by app.js --></div>
@@ -141,6 +142,8 @@
 
   <!-- App scripts (plain, no build step) -->
   <script src="js/data.js"></script>
+  <script src="js/adapters/standard-model.js"></script>
+  <script src="js/datasource.js"></script>
   <script src="js/symptoms.js"></script>
   <script src="js/safety.js"></script>
   <script src="js/analysis.js"></script>

@@ -99,7 +99,7 @@
       date: iso(d),
       daysAgo,
       recovery_score: Math.max(5, Math.min(99, Math.round(recovery))),
-      hrv_rmssd_ms: Math.max(12, Math.round(hrv)),
+      hrv_ms: Math.max(12, Math.round(hrv)),
       resting_hr_bpm: Math.round(restingHr),
       sleep_hours: sleepHours,
       day_strain: Math.max(2, dayStrain),

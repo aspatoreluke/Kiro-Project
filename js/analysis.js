@@ -1,64 +1,78 @@
 /* ============================================================
    analysis.js — the Trigger Detective engine
    ------------------------------------------------------------
-   Everything compares Maya to MAYA'S OWN baseline, never to a
+   Everything compares the person to THEIR OWN baseline, never to a
    population average. It outputs structured "findings" that hold
    FACTS AND NUMBERS ONLY (no sentences). The writer.js layer adds
    the plain-English wording later, so the safety guard sits in one
    place.
+
+   Works on any dataset in the standard model (demo or uploaded).
+   Missing metrics are null: they are skipped, never treated as 0.
    ============================================================ */
 
-(function () {
-  const D = window.RECEIPTS_DATA;
+(function (root) {
+  // Every public function takes an optional dataset (handy for tests);
+  // by default it reads whatever the app is currently showing.
+  function current(ds) { return ds || root.RECEIPTS_DATASOURCE.get(); }
+
+  function isNum(v) { return typeof v === "number" && Number.isFinite(v); }
+  function nums(arr) { return arr.filter(isNum); }
 
   function median(arr) {
-    if (!arr.length) return 0;
-    const s = [...arr].sort((a, b) => a - b);
+    const s = nums(arr).sort((a, b) => a - b);
+    if (!s.length) return null;
     const m = Math.floor(s.length / 2);
     return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
   }
-  function mean(arr) { return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0; }
+  function mean(arr) {
+    const s = nums(arr);
+    return s.length ? s.reduce((a, b) => a + b, 0) / s.length : null;
+  }
+  function roundOrNull(v, digits) {
+    if (!isNum(v)) return null;
+    const p = Math.pow(10, digits || 0);
+    return Math.round(v * p) / p;
+  }
 
-  // ---- 1) Baseline: the patient's own "normal" per signal ----
-  function computeBaseline() {
-    const restingHr = D.daily.map(d => d.resting_hr_bpm);
-    const hrv = D.daily.map(d => d.hrv_rmssd_ms);
-    const sleep = D.daily.map(d => d.sleep_hours);
-    const recovery = D.daily.map(d => d.recovery_score);
+  // ---- 1) Baseline: the person's own "normal" per signal ----
+  // Each value is a finite, non-negative number, or null if that metric
+  // isn't in the data.
+  function computeBaseline(ds) {
+    const D = current(ds);
+    const daily = D.daily || [];
     return {
-      restingHr: Math.round(median(restingHr)),
-      hrv: Math.round(median(hrv)),
-      sleep: Math.round(median(sleep) * 10) / 10,
-      recovery: Math.round(median(recovery)),
-      standJump: Math.round(median(D.standingEvents.map(e => e.hr_jump_bpm)))
+      restingHr: roundOrNull(median(daily.map(d => d.resting_hr_bpm))),
+      hrv:       roundOrNull(median(daily.map(d => d.hrv_ms))),
+      sleep:     roundOrNull(median(daily.map(d => d.sleep_hours)), 1),
+      recovery:  roundOrNull(median(daily.map(d => d.recovery_score))),
+      standJump: roundOrNull(median((D.standingEvents || []).map(e => e.hr_jump_bpm)))
     };
   }
 
-  // Helper: does a symptom id exist in the data taps?
-  function tapsFor(symptomId) {
-    return D.symptomTaps.filter(t => t.symptom_id === symptomId);
+  function tapsFor(D, symptomId) {
+    return (D.symptomTaps || []).filter(t => t.symptom_id === symptomId);
   }
+  function dayFor(D, date) { return (D.daily || []).find(d => d.date === date); }
 
   // ---- 2) Trigger Detective ----
-  // Pattern A: orthostatic HR jump before dizzy taps.
-  function orthostaticFinding(baseline) {
-    const dizzy = tapsFor("dizzy");
+  // Pattern A: big heart-rate jump after standing, on dizzy days.
+  function orthostaticFinding(D, baseline) {
+    if (!(D.standingEvents || []).length) return null;
+    const dizzy = tapsFor(D, "dizzy");
     if (dizzy.length < 4) return null;
 
-    // For each dizzy day, find that day's standing event jump.
-    let bigJumpDays = 0;
-    const jumps = [];
-    const bigJumps = [];
+    const jumps = [], bigJumps = [];
     dizzy.forEach(tap => {
       const ev = D.standingEvents.find(e => e.date === tap.date);
-      if (ev) {
+      if (ev && isNum(ev.hr_jump_bpm)) {
         jumps.push(ev.hr_jump_bpm);
-        if (ev.hr_jump_bpm >= 30) { bigJumpDays++; bigJumps.push(ev.hr_jump_bpm); }
+        if (ev.hr_jump_bpm >= 30) bigJumps.push(ev.hr_jump_bpm);
       }
     });
     if (!jumps.length) return null;
 
-    const strength = bigJumpDays / jumps.length; // fraction of dizzy days with 30+ jump
+    const strength = bigJumps.length / jumps.length;
     if (strength < 0.5) return null; // not strong enough -> drop
 
     return {
@@ -68,11 +82,10 @@
       title: "Standing up and feeling dizzy",
       facts: {
         symptom: "dizzy",
-        bigJumpDays,
+        bigJumpDays: bigJumps.length,
         totalDizzyDays: jumps.length,
-        // Report the average of the big-jump days, so the number matches the
-        // "30+ bpm" pattern we're describing.
-        avgJump: Math.round(mean(bigJumps.length ? bigJumps : jumps)),
+        // Average of the big-jump days, so the number matches the "30+ bpm" pattern.
+        avgJump: Math.round(mean(bigJumps)),
         baselineJump: baseline.standJump,
         windowMinutes: 20
       },
@@ -87,18 +100,20 @@
   }
 
   // Pattern B: short-sleep nights before fatigue crashes.
-  function shortSleepFinding(baseline) {
-    const fatigue = tapsFor("fatigue");
+  // (sleep_hours on a day = the sleep you got the night before it.)
+  function shortSleepFinding(D, baseline) {
+    if (!D.availability || !D.availability.sleep_hours) return null;
+    const fatigue = tapsFor(D, "fatigue");
     if (fatigue.length < 3) return null;
 
-    let afterShort = 0;
     const sleepOnCrashDays = [];
     fatigue.forEach(tap => {
-      const day = D.daily.find(d => d.date === tap.date);
-      if (day) { sleepOnCrashDays.push(day.sleep_hours); if (day.sleep_hours < 6) afterShort++; }
+      const day = dayFor(D, tap.date);
+      if (day && isNum(day.sleep_hours)) sleepOnCrashDays.push(day.sleep_hours);
     });
-    if (!sleepOnCrashDays.length) return null;
+    if (sleepOnCrashDays.length < 3) return null;
 
+    const afterShort = sleepOnCrashDays.filter(h => h < 6).length;
     const strength = afterShort / sleepOnCrashDays.length;
     if (strength < 0.5) return null;
 
@@ -111,7 +126,7 @@
         symptom: "fatigue",
         afterShort,
         totalCrashDays: sleepOnCrashDays.length,
-        avgSleepOnCrash: Math.round(mean(sleepOnCrashDays) * 10) / 10,
+        avgSleepOnCrash: roundOrNull(mean(sleepOnCrashDays), 1),
         baselineSleep: baseline.sleep,
         threshold: 6
       },
@@ -122,28 +137,28 @@
         reference: 6,
         yLabel: "Sleep the night before (hours)"
       },
-      source: D.sources.cdcShortSleep
+      source: root.RECEIPTS_DATASOURCE ? root.RECEIPTS_DATASOURCE.sources.cdcShortSleep : null
     };
   }
 
-  // Pattern C: pre-menstrual clustering (only if cycle data present).
-  function cycleFinding() {
-    const hasCycle = D.daily.some(d => d.cycle_day != null);
-    if (!hasCycle) return null;
+  // Pattern C: symptoms clustering in the week before a period.
+  // Uses day.premenstrual (set by datasource.annotateCycle from the person's
+  // own cycle length). Only runs if cycle data is present.
+  function cycleFinding(D) {
+    if (!D.availability || !D.availability.cycle_day) return null;
 
-    let premenstrualTaps = 0, otherTaps = 0;
-    D.symptomTaps.forEach(tap => {
-      const day = D.daily.find(d => d.date === tap.date);
-      if (!day || day.cycle_day == null) return;
-      if (D.helpers.isPremenstrual(day.cycle_day)) premenstrualTaps++; else otherTaps++;
+    let pre = 0, other = 0;
+    (D.symptomTaps || []).forEach(tap => {
+      const day = dayFor(D, tap.date);
+      if (!day || typeof day.premenstrual !== "boolean") return;
+      if (day.premenstrual) pre++; else other++;
     });
-    const total = premenstrualTaps + otherTaps;
+    const total = pre + other;
     if (total < 5) return null;
 
-    // Premenstrual window is 7 of 28 days (~25% of the time). Flag if clearly
-    // over-represented versus that 25% expectation.
-    const share = premenstrualTaps / total;
-    if (share < 0.33) return null; // not a clear cluster -> drop
+    // The week before a period is ~25% of a cycle. Flag only if clearly more.
+    const share = pre / total;
+    if (share < 0.33) return null;
 
     return {
       id: "cycle",
@@ -151,7 +166,7 @@
       strength: share,
       title: "Symptoms and your cycle",
       facts: {
-        premenstrualTaps,
+        premenstrualTaps: pre,
         totalTaps: total,
         sharePct: Math.round(share * 100),
         expectedPct: 25,
@@ -160,49 +175,104 @@
       chart: {
         type: "doughnut",
         labels: ["Week before period", "Rest of cycle"],
-        values: [premenstrualTaps, otherTaps]
+        values: [pre, other]
       }
     };
   }
 
-  function runDetective() {
-    const baseline = computeBaseline();
+  function runDetective(ds) {
+    const D = current(ds);
+    const baseline = computeBaseline(D);
     const all = [
-      orthostaticFinding(baseline),
-      shortSleepFinding(baseline),
-      cycleFinding()
+      orthostaticFinding(D, baseline),
+      shortSleepFinding(D, baseline),
+      cycleFinding(D)
     ].filter(Boolean);
-    // Keep the top 2-3 by strength.
     all.sort((a, b) => b.strength - a.strength);
     return all.slice(0, 3);
   }
 
-  // ---- 3) Early warning: how much does "today" look like past flares? ----
-  function todayScore() {
-    const baseline = computeBaseline();
-    const todayRec = D.daily[D.daily.length - 1]; // newest day
-    const prevNight = todayRec.sleep_hours;
+  // Which insights can this dataset support? Used to tell people plainly
+  // what isn't available and why (instead of silently showing nothing).
+  function insightStatus(ds) {
+    const D = current(ds);
+    const a = D.availability || {};
+    const taps = (D.symptomTaps || []).length;
+    const out = [];
+    out.push({
+      id: "orthostatic", label: "Standing-up heart-rate pattern",
+      available: (D.standingEvents || []).length > 0,
+      reason: "This needs heart rate measured right as you stand up. Your export doesn't include standing or posture moments."
+    });
+    out.push({
+      id: "shortsleep", label: "Sleep and crashes pattern",
+      available: !!a.sleep_hours,
+      reason: "Your export doesn't include sleep."
+    });
+    out.push({
+      id: "cycle", label: "Cycle pattern",
+      available: !!a.cycle_day,
+      reason: "Your export doesn't include menstrual cycle data."
+    });
+    out.push({
+      id: "hrv", label: "Heart rate variability (HRV)",
+      available: !!a.hrv_ms,
+      reason: "Your export doesn't include HRV, so it's left off the timeline and Today card."
+    });
+    out.push({
+      id: "taps", label: "Symptom taps",
+      available: taps >= 3,
+      reason: "Patterns need symptom taps to compare against. Tap symptoms as they happen and patterns will appear."
+    });
+    return out;
+  }
 
-    // Build a gentle 0-1 "looks like a hard day" score from own-baseline deviations.
-    let score = 0, reasons = [];
-    if (todayRec.recovery_score < baseline.recovery - 12) {
-      score += 0.4; reasons.push({ k: "recovery", v: todayRec.recovery_score, base: baseline.recovery });
+  // ---- 3) Early warning: does "today" look like the lead-up to harder days? ----
+  function todayScore(ds) {
+    const D = current(ds);
+    const baseline = computeBaseline(D);
+    const daily = D.daily || [];
+    const todayRec = daily[daily.length - 1] || {};
+
+    // Gentle 0-1 score from own-baseline deviations. Each check only runs
+    // when BOTH today's value and the baseline exist.
+    let score = 0;
+    const reasons = [];
+    const checked = [];
+    if (isNum(todayRec.recovery_score) && isNum(baseline.recovery)) {
+      checked.push("recovery");
+      if (todayRec.recovery_score < baseline.recovery - 12) {
+        score += 0.4; reasons.push({ k: "recovery", v: todayRec.recovery_score, base: baseline.recovery });
+      }
     }
-    if (todayRec.hrv_rmssd_ms < baseline.hrv - 10) {
-      score += 0.3; reasons.push({ k: "hrv", v: todayRec.hrv_rmssd_ms, base: baseline.hrv });
+    if (isNum(todayRec.hrv_ms) && isNum(baseline.hrv)) {
+      checked.push("hrv");
+      if (todayRec.hrv_ms < baseline.hrv - 10) {
+        score += 0.3; reasons.push({ k: "hrv", v: todayRec.hrv_ms, base: baseline.hrv });
+      }
     }
-    if (prevNight < 6) {
-      score += 0.3; reasons.push({ k: "sleep", v: prevNight, base: baseline.sleep });
+    if (isNum(todayRec.sleep_hours) && isNum(baseline.sleep)) {
+      checked.push("sleep");
+      if (todayRec.sleep_hours < 6) {
+        score += 0.3; reasons.push({ k: "sleep", v: todayRec.sleep_hours, base: baseline.sleep });
+      }
+    }
+    if (isNum(todayRec.resting_hr_bpm) && isNum(baseline.restingHr)) {
+      checked.push("restingHr");
+      if (todayRec.resting_hr_bpm > baseline.restingHr + 6) {
+        score += 0.3; reasons.push({ k: "restingHr", v: todayRec.resting_hr_bpm, base: baseline.restingHr });
+      }
     }
 
     return {
       pacing: score >= 0.4,
-      score,
+      score: Math.min(1, score),
       reasons,
+      checked,          // which signals we could actually compare today
       today: todayRec,
       baseline
     };
   }
 
-  window.RECEIPTS_ANALYSIS = { computeBaseline, runDetective, todayScore };
-})();
+  root.RECEIPTS_ANALYSIS = { computeBaseline, runDetective, todayScore, insightStatus, median, mean };
+})(typeof window !== "undefined" ? window : globalThis);

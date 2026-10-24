@@ -44,6 +44,7 @@
         if (reason.k === "recovery") return `your recovery is a bit below your usual (${reason.v} vs ~${reason.base})`;
         if (reason.k === "hrv") return `your HRV is lower than your usual (${reason.v} vs ~${reason.base} ms)`;
         if (reason.k === "sleep") return `you slept under your usual last night (${reason.v} h vs ~${reason.base} h)`;
+        if (reason.k === "restingHr") return `your resting heart rate is higher than your usual (${reason.v} vs ~${reason.base} bpm)`;
         return "";
       }).filter(Boolean);
       return `Your body looks a bit like it did before some of your harder days — ${listJoin(bits)}. ` +
@@ -68,6 +69,11 @@
   }
 
   function writeTodayMessage(todayResult) {
+    // If we couldn't compare anything today, say so plainly instead of guessing.
+    if (todayResult.checked && todayResult.checked.length === 0) {
+      return "We don't have enough of today's data to compare with your usual yet. " +
+             "Listen to your body and go at your own pace.";
+    }
     const raw = todayResult.pacing
       ? generate("todayPace", todayResult)
       : generate("todayGood", todayResult);
@@ -90,7 +96,7 @@
 
   function writeBrief(findings, todayResult, audience) {
     const intro = audience === "doctor"
-      ? "Patient-collected wearable patterns, compared to the patient's own baseline over 60 days. Shared to support the visit."
+      ? "Patient-collected wearable patterns, compared to the patient's own baseline. Shared to support the visit."
       : "Here's what your own data has been showing lately — in plain language — so you can talk it through with your doctor.";
 
     const patterns = findings.map(f => {

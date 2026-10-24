@@ -7,7 +7,7 @@
    ============================================================ */
 
 (function () {
-  const DATA = window.RECEIPTS_DATA;
+  const DS = window.RECEIPTS_DATASOURCE;
   const SYM = window.RECEIPTS_SYMPTOMS;
   const ANALYSIS = window.RECEIPTS_ANALYSIS;
   const WRITER = window.RECEIPTS_WRITER;
@@ -16,7 +16,7 @@
   // Current patient symptom set (loaded from localStorage or default).
   let symptomSet = SYM.loadSet();
   let editorSet = [];          // working copy while editing on screen 0
-  let timelineVisible = { restingHr: true, hrv: true, sleep: true };
+  let timelineVisible = { restingHr: true, hrv: true, sleep: true, steps: true };
   let briefAudience = "doctor";
 
   const $ = (sel) => document.querySelector(sel);
@@ -121,18 +121,24 @@
     });
   }
   function logTap(symptom) {
-    $("#tap-confirm").textContent = `Logged "${symptom.label}" at ${nowLabel()} \u2713`;
+    DS.logTap(symptom.id);
+    $("#tap-confirm").textContent = `Logged "${symptom.label}" at ${nowLabel()} \u2713 \u2014 it's on your timeline now`;
   }
 
   // ---------- Screen 2: Timeline ----------
   function renderTimeline() {
     const togglesWrap = $("#timeline-toggles");
     togglesWrap.innerHTML = "";
-    const toggles = [
-      { key: "restingHr", label: "Resting HR" },
-      { key: "hrv", label: "HRV" },
-      { key: "sleep", label: "Sleep" }
-    ];
+    // Only offer toggles for metrics this data actually has.
+    const SHORT = { restingHr: "Resting HR", hrv: "HRV", sleep: "Sleep", steps: "Steps" };
+    const D = DS.get();
+    const toggles = CHARTS.availableLines(D).map(l => ({ key: l.key, label: SHORT[l.key] }));
+    const missing = CHARTS.LINES.filter(l => !D.availability[l.field]).map(l => SHORT[l.key]);
+    const note = $("#timeline-missing");
+    note.textContent = missing.length
+      ? `Not in this data: ${missing.join(", ")}. We only show what your device recorded.`
+      : "";
+    $("#timeline-title").textContent = `Your last ${D.daily.length} days`;
     toggles.forEach(t => {
       const b = document.createElement("button");
       b.className = "chart-toggle" + (timelineVisible[t.key] ? "" : " off");
@@ -163,9 +169,17 @@
     const list = $("#findings-list");
     list.innerHTML = "";
 
+    // Plainly say which insights this data can't support, and why.
+    const unavailable = ANALYSIS.insightStatus().filter(s => !s.available);
+    const missingHtml = unavailable.length
+      ? `<div class="missing-box"><h3>Not available with this data</h3><ul>` +
+        unavailable.map(s => `<li><strong>${escapeHtml(s.label)}:</strong> ${escapeHtml(s.reason)}</li>`).join("") +
+        `</ul></div>`
+      : "";
+
     if (!findings.length) {
       list.innerHTML = `<p class="muted">We don't see a strong pattern yet. Keep logging — patterns
-        become clearer with more taps.</p>`;
+        become clearer with more taps.</p>` + missingHtml;
       return;
     }
 
@@ -184,6 +198,7 @@
       list.appendChild(card);
       CHARTS.renderMini(canvasId, f.chart);
     });
+    if (missingHtml) list.insertAdjacentHTML("beforeend", missingHtml);
   }
 
   // ---------- Screen 4: Today ----------
@@ -191,8 +206,10 @@
     const result = ANALYSIS.todayScore();
     const msg = WRITER.writeTodayMessage(result);
     const wrap = $("#today-content");
-    const cls = result.pacing ? "pace" : "good";
-    const headline = result.pacing ? "Looks like a pacing day" : "Looks like a good day";
+    const noData = result.checked.length === 0;
+    const cls = noData ? "neutral" : (result.pacing ? "pace" : "good");
+    const headline = noData ? "Not enough data for today"
+      : (result.pacing ? "Looks like a pacing day" : "Looks like a good day");
     wrap.innerHTML =
       `<div class="today-banner ${cls}">${headline}</div>` +
       `<p class="today-why">${escapeHtml(msg)}</p>` +
@@ -220,9 +237,12 @@
     const brief = WRITER.writeBrief(findings, todayResult, briefAudience);
     const page = $("#brief-page");
 
+    const D = DS.get();
+    const n = D.daily.length;
+    const ageBit = D.patient.age ? ` (age ${D.patient.age})` : "";
     const whoLine = briefAudience === "doctor"
-      ? `Patient: ${DATA.patient.name} (age ${DATA.patient.age}) · 60-day wearable summary`
-      : `Your 60-day summary, ${DATA.patient.name}`;
+      ? `Patient: ${D.patient.name}${ageBit} · ${n}-day wearable summary · source: ${D.label}`
+      : `Your ${n}-day summary, ${D.patient.name}`;
 
     let html =
       `<div class="brief-head">` +
