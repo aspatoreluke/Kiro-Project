@@ -1,12 +1,12 @@
 # Netlify config for Receipts.
-# This is a plain static site — no build step. Netlify just serves the folder.
+# Static site (no build step) + one serverless function for the live AI step.
 
 [build]
   publish = "."
   command = ""
 
-# Send every route to index.html (single-page app).
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+[functions]
+  directory = "netlify/functions"
+
+# (No catch-all redirect: Receipts is a single index.html, and a "/*" rewrite
+#  could shadow the /.netlify/functions/write endpoint.)

@@ -273,6 +273,12 @@ the demo never breaks.
    (never raw personal data) and returns the Trigger Detective explanations, the early-warning
    message, and both briefs.
 2. The AI API key SHALL be stored as a Netlify environment variable — never in the code or repo.
+   The default provider SHALL be free to run (Google Gemini free tier, `GEMINI_API_KEY`), with
+   Claude (`ANTHROPIC_API_KEY`) supported as an optional paid alternative. *(Changed: the team
+   chose not to spend money; Claude has no free API tier.)*
+2b. Because the app has no login, the function endpoint is public. It SHALL accept only the
+   whitelisted pattern shape (kinds + numbers), reject other origins and oversized bodies, and
+   never echo provider errors or keys.
 3. Every AI response SHALL pass `assertSafeText()` before display.
 4. IF the AI call fails, takes longer than 8 seconds, or fails the safety check THEN the system
    SHALL automatically fall back to the existing local templates.
