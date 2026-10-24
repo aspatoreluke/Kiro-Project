@@ -1,0 +1,295 @@
+/* ============================================================
+   app.js — navigation, rendering, and wiring
+   ------------------------------------------------------------
+   Ties everything together: the first-run personalize flow, the
+   five screens, the bottom nav, and re-rendering when the patient
+   changes their symptom set.
+   ============================================================ */
+
+(function () {
+  const DATA = window.RECEIPTS_DATA;
+  const SYM = window.RECEIPTS_SYMPTOMS;
+  const ANALYSIS = window.RECEIPTS_ANALYSIS;
+  const WRITER = window.RECEIPTS_WRITER;
+  const CHARTS = window.RECEIPTS_CHARTS;
+
+  // Current patient symptom set (loaded from localStorage or default).
+  let symptomSet = SYM.loadSet();
+  let editorSet = [];          // working copy while editing on screen 0
+  let timelineVisible = { restingHr: true, hrv: true, sleep: true };
+  let briefAudience = "doctor";
+
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+  // ---------- Navigation ----------
+  function showScreen(id) {
+    $$(".screen").forEach(s => { s.hidden = (s.id !== id); });
+    $$(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.screen === id));
+    // Lazy render per screen.
+    if (id === "screen-tap") renderTapButtons();
+    if (id === "screen-timeline") renderTimeline();
+    if (id === "screen-detective") renderDetective();
+    if (id === "screen-today") renderToday();
+    if (id === "screen-brief") renderBrief();
+    window.scrollTo(0, 0);
+  }
+
+  $$(".nav-btn").forEach(btn => {
+    btn.addEventListener("click", () => showScreen(btn.dataset.screen));
+  });
+
+  // ---------- Screen 0: Personalize ----------
+  function renderSymptomEditor() {
+    const wrap = $("#symptom-editor");
+    wrap.innerHTML = "";
+    editorSet.forEach((s, idx) => {
+      const chip = document.createElement("div");
+      chip.className = "symptom-chip selected";
+      chip.style.borderColor = s.color;
+      chip.innerHTML =
+        `<span class="chip-icon">${s.icon}</span>` +
+        `<span class="chip-label">${escapeHtml(s.label)}</span>` +
+        `<span class="chip-remove" aria-label="Remove ${escapeHtml(s.label)}">✕</span>`;
+      chip.querySelector(".chip-remove").addEventListener("click", (e) => {
+        e.stopPropagation();
+        editorSet.splice(idx, 1);
+        renderSymptomEditor();
+      });
+      wrap.appendChild(chip);
+    });
+
+    // Offer library symptoms not already chosen.
+    const chosenIds = new Set(editorSet.map(s => s.id));
+    Object.keys(SYM.LIBRARY).forEach(id => {
+      if (chosenIds.has(id)) return;
+      const lib = SYM.LIBRARY[id];
+      const chip = document.createElement("div");
+      chip.className = "symptom-chip";
+      chip.innerHTML = `<span class="chip-icon">${lib.icon}</span><span>${lib.label}</span><span class="chip-remove">＋</span>`;
+      chip.addEventListener("click", () => {
+        editorSet.push({ id, ...lib, custom: false });
+        renderSymptomEditor();
+      });
+      wrap.appendChild(chip);
+    });
+  }
+
+  // Suggest a starter set when the condition note changes.
+  $("#condition-note").addEventListener("input", (e) => {
+    const note = e.target.value;
+    // Only auto-suggest if the user hasn't manually customized much yet.
+    editorSet = SYM.suggestFromCondition(note);
+    renderSymptomEditor();
+  });
+
+  $("#add-symptom-btn").addEventListener("click", addCustomSymptom);
+  $("#new-symptom-name").addEventListener("keydown", (e) => { if (e.key === "Enter") addCustomSymptom(); });
+  function addCustomSymptom() {
+    const input = $("#new-symptom-name");
+    const custom = SYM.makeCustom(input.value);
+    if (custom) { editorSet.push(custom); input.value = ""; renderSymptomEditor(); }
+  }
+
+  $("#finish-setup-btn").addEventListener("click", () => {
+    if (!editorSet.length) { editorSet = SYM.defaultSetObjects(); }
+    symptomSet = editorSet.slice();
+    SYM.saveSet(symptomSet);
+    SYM.saveConditionNote($("#condition-note").value);
+    showScreen("screen-tap");
+  });
+
+  $("#edit-symptoms-btn").addEventListener("click", () => {
+    editorSet = symptomSet.slice();
+    $("#condition-note").value = SYM.loadConditionNote();
+    renderSymptomEditor();
+    showScreen("screen-personalize");
+  });
+
+  // ---------- Screen 1: Symptom tap ----------
+  function renderTapButtons() {
+    $("#watch-time").textContent = nowLabel();
+    const wrap = $("#tap-buttons");
+    wrap.innerHTML = "";
+    symptomSet.forEach(s => {
+      const btn = document.createElement("button");
+      btn.className = "tap-btn";
+      btn.style.borderColor = hexA(s.color, 0.5);
+      btn.innerHTML = `<span class="tap-icon">${s.icon}</span><span>${escapeHtml(s.label)}</span>`;
+      btn.addEventListener("click", () => logTap(s));
+      wrap.appendChild(btn);
+    });
+  }
+  function logTap(symptom) {
+    $("#tap-confirm").textContent = `Logged "${symptom.label}" at ${nowLabel()} \u2713`;
+  }
+
+  // ---------- Screen 2: Timeline ----------
+  function renderTimeline() {
+    const togglesWrap = $("#timeline-toggles");
+    togglesWrap.innerHTML = "";
+    const toggles = [
+      { key: "restingHr", label: "Resting HR" },
+      { key: "hrv", label: "HRV" },
+      { key: "sleep", label: "Sleep" }
+    ];
+    toggles.forEach(t => {
+      const b = document.createElement("button");
+      b.className = "chart-toggle" + (timelineVisible[t.key] ? "" : " off");
+      b.textContent = t.label;
+      b.addEventListener("click", () => {
+        timelineVisible[t.key] = !timelineVisible[t.key];
+        renderTimeline();
+      });
+      togglesWrap.appendChild(b);
+    });
+
+    CHARTS.renderTimeline("timeline-chart", timelineVisible, symptomSet);
+
+    // Legend of the patient's symptoms.
+    const legend = $("#timeline-legend");
+    legend.innerHTML = "";
+    symptomSet.forEach(s => {
+      const item = document.createElement("span");
+      item.className = "legend-item";
+      item.innerHTML = `<span class="legend-dot" style="background:${s.color}"></span>${s.icon} ${escapeHtml(s.label)}`;
+      legend.appendChild(item);
+    });
+  }
+
+  // ---------- Screen 3: Trigger Detective ----------
+  function renderDetective() {
+    const findings = ANALYSIS.runDetective();
+    const list = $("#findings-list");
+    list.innerHTML = "";
+
+    if (!findings.length) {
+      list.innerHTML = `<p class="muted">We don't see a strong pattern yet. Keep logging — patterns
+        become clearer with more taps.</p>`;
+      return;
+    }
+
+    findings.forEach((f, i) => {
+      const sentence = WRITER.writeFinding(f);
+      const card = document.createElement("div");
+      card.className = "finding";
+      const canvasId = "mini-" + i;
+      card.innerHTML =
+        `<h3>${escapeHtml(f.title)}</h3>` +
+        `<span class="baseline-tag">compared to your own baseline</span>` +
+        `<p class="finding-sentence">${escapeHtml(sentence)}</p>` +
+        `<div class="mini-chart-wrap"><canvas id="${canvasId}"></canvas></div>` +
+        (f.source ? `<p class="source-note">${escapeHtml(f.source.label)} ` +
+          `<a href="${f.source.url}" target="_blank" rel="noopener">source</a></p>` : "");
+      list.appendChild(card);
+      CHARTS.renderMini(canvasId, f.chart);
+    });
+  }
+
+  // ---------- Screen 4: Today ----------
+  function renderToday() {
+    const result = ANALYSIS.todayScore();
+    const msg = WRITER.writeTodayMessage(result);
+    const wrap = $("#today-content");
+    const cls = result.pacing ? "pace" : "good";
+    const headline = result.pacing ? "Looks like a pacing day" : "Looks like a good day";
+    wrap.innerHTML =
+      `<div class="today-banner ${cls}">${headline}</div>` +
+      `<p class="today-why">${escapeHtml(msg)}</p>` +
+      `<p class="disclaimer-note">This is not a diagnosis — your clinician decides.</p>`;
+  }
+
+  // ---------- Screen 5: Brief ----------
+  $("#toggle-doctor").addEventListener("click", () => { briefAudience = "doctor"; setToggle(); renderBrief(); });
+  $("#toggle-patient").addEventListener("click", () => { briefAudience = "patient"; setToggle(); renderBrief(); });
+  function setToggle() {
+    $("#toggle-doctor").classList.toggle("active", briefAudience === "doctor");
+    $("#toggle-patient").classList.toggle("active", briefAudience === "patient");
+    $("#toggle-doctor").setAttribute("aria-selected", briefAudience === "doctor");
+    $("#toggle-patient").setAttribute("aria-selected", briefAudience === "patient");
+  }
+
+  $("#send-doctor-btn").addEventListener("click", () => {
+    $("#send-confirm").textContent = "Your brief is ready to share — (demo) sent to your doctor ✓";
+  });
+  $("#print-brief-btn").addEventListener("click", () => window.print());
+
+  function renderBrief() {
+    const findings = ANALYSIS.runDetective();
+    const todayResult = ANALYSIS.todayScore();
+    const brief = WRITER.writeBrief(findings, todayResult, briefAudience);
+    const page = $("#brief-page");
+
+    const whoLine = briefAudience === "doctor"
+      ? `Patient: ${DATA.patient.name} (age ${DATA.patient.age}) · 60-day wearable summary`
+      : `Your 60-day summary, ${DATA.patient.name}`;
+
+    let html =
+      `<div class="brief-head">` +
+      `<h2>${briefAudience === "doctor" ? "Pre-Appointment Brief" : "Your Health Receipts"}</h2>` +
+      `<p class="who">${escapeHtml(whoLine)}</p>` +
+      `<p>${escapeHtml(brief.intro)}</p>` +
+      `</div>`;
+
+    brief.patterns.forEach((p, i) => {
+      const canvasId = "brief-mini-" + i;
+      html +=
+        `<div class="brief-pattern">` +
+        `<h3>${escapeHtml(p.title)}</h3>` +
+        `<p>${escapeHtml(p.sentence)}</p>` +
+        `<div class="mini-chart-wrap"><canvas id="${canvasId}"></canvas></div>` +
+        (p.source ? `<p class="source-note">${escapeHtml(p.source.label)}</p>` : "") +
+        (p.question ? `<div class="brief-question">Suggested question: ${escapeHtml(p.question)}</div>` : "") +
+        `</div>`;
+    });
+
+    if (briefAudience === "patient" && brief.patientQuestions.length) {
+      html += `<h3>3 questions to ask your doctor</h3><ul class="brief-questions-list">`;
+      brief.patientQuestions.forEach(q => { html += `<li>${escapeHtml(q)}</li>`; });
+      html += `</ul>`;
+    }
+
+    html += `<p class="disclaimer-note">${escapeHtml(brief.disclaimer)}</p>`;
+    page.innerHTML = html;
+
+    // Render the mini-charts after the HTML is in the DOM.
+    brief.patterns.forEach((p, i) => CHARTS.renderMini("brief-mini-" + i, p.chart));
+  }
+
+  // ---------- helpers ----------
+  function nowLabel() {
+    const d = new Date();
+    let h = d.getHours(), m = d.getMinutes();
+    const ap = h >= 12 ? "PM" : "AM"; h = h % 12 || 12;
+    return `${h}:${String(m).padStart(2, "0")} ${ap}`;
+  }
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  }
+  function hexA(hex, a) {
+    const m = hex.replace("#", "");
+    const r = parseInt(m.slice(0, 2), 16), g = parseInt(m.slice(2, 4), 16), b = parseInt(m.slice(4, 6), 16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  // ---------- First-run flow ----------
+  function init() {
+    setToggle();
+    const hasSaved = !!localStorage.getItem("receipts.symptomSet.v1");
+    if (hasSaved) {
+      // Returning user: skip straight to the tap screen.
+      showScreen("screen-tap");
+    } else {
+      // First run: start on personalize with the default set.
+      editorSet = SYM.defaultSetObjects();
+      renderSymptomEditor();
+      showScreen("screen-personalize");
+    }
+  }
+
+  init();
+
+  // expose for console/debugging during the demo
+  window.RECEIPTS_APP = { showScreen };
+})();

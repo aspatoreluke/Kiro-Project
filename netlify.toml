@@ -1,0 +1,12 @@
+# Netlify config for Receipts.
+# This is a plain static site — no build step. Netlify just serves the folder.
+
+[build]
+  publish = "."
+  command = ""
+
+# Send every route to index.html (single-page app).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

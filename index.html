@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Receipts — your body's evidence, in plain sight</title>
+  <meta name="description" content="Receipts helps people with chronic, hard-to-diagnose conditions turn wearable data into clear patterns to share with their doctor. Not a diagnosis — your clinician decides." />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Chart.js for the timeline and mini-charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <!-- App header -->
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">🧾</span>
+      <span class="brand-name">Receipts</span>
+    </div>
+    <p class="brand-tagline">Your body's evidence, in plain sight.</p>
+  </header>
+
+  <main id="app-main">
+    <!-- SCREEN 0: Personalize (first run) -->
+    <section id="screen-personalize" class="screen" aria-label="Personalize your symptoms">
+      <div class="card welcome-card">
+        <h1>Welcome 👋</h1>
+        <p class="lead">
+          Receipts helps you notice patterns in how your body feels, using the data your watch
+          already collects. You tap what you feel, and we gently compare it to <strong>your own
+          normal</strong> — never anyone else's.
+        </p>
+        <p class="muted">Let's set this up for <em>your</em> body. This takes about a minute.</p>
+
+        <div class="field">
+          <label for="condition-note">What do you live with? (optional — you can skip this)</label>
+          <input id="condition-note" type="text" class="text-input"
+                 placeholder="e.g. POTS, long COVID, migraines, endometriosis…" />
+          <p class="hint">We use this only to suggest symptoms and word things kindly. We never use
+            it to diagnose anything.</p>
+        </div>
+
+        <h2>Your symptoms</h2>
+        <p class="muted">Pick the ones you feel. Add your own in your words. Remove what doesn't fit.</p>
+        <div id="symptom-editor" class="symptom-editor"><!-- built by symptoms.js --></div>
+
+        <div class="add-symptom-row">
+          <input id="new-symptom-name" type="text" class="text-input"
+                 placeholder="Add a symptom in your words (e.g. 'heart racing', 'hives')" />
+          <button id="add-symptom-btn" class="btn btn-secondary">Add</button>
+        </div>
+
+        <button id="finish-setup-btn" class="btn btn-primary btn-block">
+          This is me — let's go
+        </button>
+        <p class="disclaimer-note">This is not a diagnosis — your clinician decides.</p>
+      </div>
+    </section>
+
+    <!-- SCREEN 1: Symptom tap -->
+    <section id="screen-tap" class="screen" hidden aria-label="Log a symptom">
+      <div class="watch-widget">
+        <p class="watch-time" id="watch-time">now</p>
+        <h2 class="watch-title">How are you feeling?</h2>
+        <p class="muted center">Tap the moment it happens.</p>
+        <div id="tap-buttons" class="tap-buttons"><!-- built by app.js --></div>
+        <p id="tap-confirm" class="tap-confirm" role="status" aria-live="polite"></p>
+      </div>
+      <div class="edit-symptoms-link">
+        <button id="edit-symptoms-btn" class="btn btn-link">Edit my symptoms</button>
+      </div>
+    </section>
+
+    <!-- SCREEN 2: Timeline -->
+    <section id="screen-timeline" class="screen" hidden aria-label="Your 60-day timeline">
+      <div class="card">
+        <h2>Your last 60 days</h2>
+        <p class="muted">Resting heart rate, HRV, and sleep — with the moments you tapped marked on top.</p>
+        <div class="chart-toggles" id="timeline-toggles"><!-- built by app.js --></div>
+        <div class="chart-wrap"><canvas id="timeline-chart" height="260"></canvas></div>
+        <div id="timeline-legend" class="symptom-legend"><!-- built by app.js --></div>
+      </div>
+    </section>
+
+    <!-- SCREEN 3: Trigger Detective -->
+    <section id="screen-detective" class="screen" hidden aria-label="Trigger Detective">
+      <div class="card">
+        <h2>Trigger Detective 🔎</h2>
+        <p class="muted">The strongest patterns we found in what tends to come <em>before</em> your
+          symptoms — always compared to your own baseline.</p>
+        <div id="findings-list"><!-- built by app.js --></div>
+      </div>
+    </section>
+
+    <!-- SCREEN 4: Today -->
+    <section id="screen-today" class="screen" hidden aria-label="Today">
+      <div class="card today-card" id="today-card">
+        <h2>Today</h2>
+        <div id="today-content"><!-- built by app.js --></div>
+      </div>
+    </section>
+
+    <!-- SCREEN 5: Pre-appointment brief -->
+    <section id="screen-brief" class="screen" hidden aria-label="Pre-appointment brief">
+      <div class="brief-controls no-print">
+        <div class="audience-toggle" role="tablist" aria-label="Choose brief version">
+          <button id="toggle-doctor" class="toggle-btn active" role="tab" aria-selected="true">
+            For my doctor
+          </button>
+          <button id="toggle-patient" class="toggle-btn" role="tab" aria-selected="false">
+            For me
+          </button>
+        </div>
+        <div class="brief-actions">
+          <button id="send-doctor-btn" class="btn btn-secondary">Send to my doctor</button>
+          <button id="print-brief-btn" class="btn btn-primary">Save / Print as PDF</button>
+        </div>
+        <p id="send-confirm" class="send-confirm" role="status" aria-live="polite"></p>
+      </div>
+      <article id="brief-page" class="brief-page"><!-- built by app.js --></article>
+    </section>
+  </main>
+
+  <!-- Bottom navigation (thumb-friendly) -->
+  <nav class="bottom-nav" aria-label="Main navigation">
+    <button class="nav-btn" data-screen="screen-tap" aria-label="Log a symptom">
+      <span class="nav-icon" aria-hidden="true">➕</span><span class="nav-label">Log</span>
+    </button>
+    <button class="nav-btn" data-screen="screen-timeline" aria-label="Timeline">
+      <span class="nav-icon" aria-hidden="true">📈</span><span class="nav-label">Timeline</span>
+    </button>
+    <button class="nav-btn" data-screen="screen-detective" aria-label="Trigger Detective">
+      <span class="nav-icon" aria-hidden="true">🔎</span><span class="nav-label">Patterns</span>
+    </button>
+    <button class="nav-btn" data-screen="screen-today" aria-label="Today">
+      <span class="nav-icon" aria-hidden="true">☀️</span><span class="nav-label">Today</span>
+    </button>
+    <button class="nav-btn" data-screen="screen-brief" aria-label="Pre-appointment brief">
+      <span class="nav-icon" aria-hidden="true">🧾</span><span class="nav-label">Brief</span>
+    </button>
+  </nav>
+
+  <!-- App scripts (plain, no build step) -->
+  <script src="js/data.js"></script>
+  <script src="js/symptoms.js"></script>
+  <script src="js/safety.js"></script>
+  <script src="js/analysis.js"></script>
+  <script src="js/writer.js"></script>
+  <script src="js/charts.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Receipts — .gitignore
+#
+# NOTE: .kiro/ is intentionally NOT ignored. The specs, steering, and hooks
+# are part of our submission — judges should see how we used Kiro.
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+
+# Dependencies (we don't use npm, but just in case)
+node_modules/
+
+# Netlify local state
+.netlify/
