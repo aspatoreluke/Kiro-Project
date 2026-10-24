@@ -32,7 +32,7 @@
   function nonNegative(v) { return v === null ? null : Math.max(0, v); }
   function roundOrNull(v, digits) {
     if (!isNum(v)) return null;
-    const p = Math.pow(10, digits || 0);
+    const p = Math.pow(10, digits || 0); // negative digits round to tens/hundreds
     return Math.round(v * p) / p;
   }
 
@@ -278,5 +278,102 @@
     };
   }
 
-  root.RECEIPTS_ANALYSIS = { computeBaseline, runDetective, todayScore, insightStatus, median, mean };
+  // ---- 4) Quick correlations: symptom days vs. the person's own low/high days ----
+  // "Low" = in the bottom quarter of THIS person's readings, "high" = top quarter,
+  // so ~25% of days are low (or high) by definition. We report a link only when a
+  // symptom's days are low/high far more often than that.
+  const CORR_METRICS = [
+    { field: "sleep_hours",    name: "sleep",                 unit: "hours" },
+    { field: "resting_hr_bpm", name: "resting heart rate",    unit: "bpm" },
+    { field: "hrv_ms",         name: "heart rate variability (HRV)", unit: "ms" },
+    { field: "recovery_score", name: "recovery score",        unit: "" },
+    { field: "steps",          name: "steps",                 unit: "steps" },
+    { field: "skin_temp_c",    name: "skin temperature",      unit: "°C" }
+  ];
+  const CORR_MIN_DAYS = 3;      // need at least 3 symptom days with that metric
+  const CORR_MIN_SHARE = 0.5;   // at least half of those days
+  const CORR_MIN_LIFT = 2;      // and at least 2x the usual 1-in-4
+
+  const CORR_MAX_P = 0.02;      // and unlikely to be chance (2% or less)
+  const CORR_PER_SYMPTOM = 2;   // at most 2 lines per symptom, so one symptom can't fill the list
+
+  // P(X >= k) for X ~ Binomial(n, p).
+  function binomTail(n, k, p) {
+    let sum = 0;
+    for (let i = k; i <= n; i++) {
+      let c = 1;
+      for (let j = 0; j < i; j++) c = c * (n - j) / (j + 1);
+      sum += c * Math.pow(p, i) * Math.pow(1 - p, n - i);
+    }
+    return Math.min(1, sum);
+  }
+
+  function quantile(sorted, q) {
+    if (!sorted.length) return null;
+    const pos = (sorted.length - 1) * q, lo = Math.floor(pos), hi = Math.ceil(pos);
+    return sorted[lo] + (sorted[hi] - sorted[lo]) * (pos - lo);
+  }
+
+  function correlations(ds, opts) {
+    const D = current(ds);
+    const daily = D.daily || [];
+    const a = D.availability || {};
+    const limit = (opts && opts.limit) || 5;
+    const byDate = new Map(daily.map(d => [d.date, d]));
+
+    // Unique days per symptom (two taps on one day count once).
+    const daysBySymptom = new Map();
+    (D.symptomTaps || []).forEach(t => {
+      if (!byDate.has(t.date)) return;
+      if (!daysBySymptom.has(t.symptom_id)) daysBySymptom.set(t.symptom_id, new Set());
+      daysBySymptom.get(t.symptom_id).add(t.date);
+    });
+
+    const out = [];
+    CORR_METRICS.forEach(m => {
+      if (!a[m.field]) return;
+      const values = nums(daily.map(d => d[m.field])).sort((x, y) => x - y);
+      if (values.length < 8) return; // too few days to know what "usual" is
+      const low = quantile(values, 0.25), high = quantile(values, 0.75);
+      if (!(high > low)) return;      // flat data: nothing is low or high
+      const lowRate = values.filter(v => v <= low).length / values.length;
+      const highRate = values.filter(v => v >= high).length / values.length;
+
+      daysBySymptom.forEach((dates, symptom) => {
+        const vals = [...dates].map(d => byDate.get(d)[m.field]).filter(isNum);
+        if (vals.length < CORR_MIN_DAYS) return;
+        [["low", low, lowRate, v => v <= low], ["high", high, highRate, v => v >= high]].forEach(([dir, cut, base, test]) => {
+          const hitVals = vals.filter(test);
+          const hits = hitVals.length;
+          const share = hits / vals.length;
+          if (hits < CORR_MIN_DAYS || share < CORR_MIN_SHARE || share < base * CORR_MIN_LIFT) return;
+          // Could this be chance? Probability of this many low/high days if the
+          // symptom had nothing to do with the metric (binomial tail).
+          const p = binomTail(vals.length, hits, base);
+          if (p > CORR_MAX_P) return;
+          const digits = m.field === "steps" ? -2 : 1;
+          out.push({
+            symptom, field: m.field, metric: m.name, unit: m.unit, direction: dir,
+            threshold: roundOrNull(cut, digits),
+            typical: roundOrNull(median(hitVals), digits),   // typical value on those days
+            hits, days: vals.length, share, usualShare: base, p,
+            usual: roundOrNull(median(values), digits),
+            strength: share * Math.min(1, vals.length / 8)
+          });
+        });
+      });
+    });
+
+    // Strongest first; at most one line per symptom + metric pair.
+    out.sort((x, y) => y.strength - x.strength || y.hits - x.hits);
+    const seen = new Set(), perSymptom = new Map();
+    return out.filter(c => {
+      const k = c.symptom + "|" + c.field;
+      const n = perSymptom.get(c.symptom) || 0;
+      if (seen.has(k) || n >= CORR_PER_SYMPTOM) return false;
+      seen.add(k); perSymptom.set(c.symptom, n + 1); return true;
+    }).slice(0, limit);
+  }
+
+  root.RECEIPTS_ANALYSIS = { computeBaseline, runDetective, todayScore, insightStatus, correlations, median, mean };
 })(typeof window !== "undefined" ? window : globalThis);

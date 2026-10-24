@@ -111,6 +111,10 @@ async function waitFor(expr, ms = 5000) {
     check(`${screen} opens`, await evaluate(visible(screen)));
   }
   check("timeline chart drew", await evaluate("!!Chart.getChart('timeline-chart')"));
+  await evaluate("document.querySelector('[data-screen=\"screen-timeline\"]').click()");
+  await sleep(300);
+  check("timeline summary lists symptom links", (await evaluate("document.querySelectorAll('#correlations-list .corr-item').length")) >= 2,
+        await evaluate("[...document.querySelectorAll('#correlations-list .corr-body p')].map(p => p.innerText).join(' | ')"));
   check("detective shows findings", (await evaluate("document.querySelectorAll('#findings-list .finding').length")) >= 2);
   check("brief has the disclaimer", await evaluate("document.getElementById('brief-page').innerText.includes('not a diagnosis')"));
   await evaluate("document.querySelector('[data-screen=\"screen-today\"]').click()");

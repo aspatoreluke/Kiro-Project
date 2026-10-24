@@ -208,6 +208,8 @@
 
     CHARTS.renderTimeline("timeline-chart", timelineVisible, symptomSet);
 
+    renderCorrelations(D);
+
     // Legend of the patient's symptoms.
     const legend = $("#timeline-legend");
     legend.innerHTML = "";
@@ -217,6 +219,29 @@
       item.innerHTML = `<span class="legend-dot" style="background:${s.color}"></span>${escapeHtml(s.label)}`;
       legend.appendChild(item);
     });
+  }
+
+  // Quick correlations under the timeline.
+  function renderCorrelations(D) {
+    const list = $("#correlations-list");
+    const items = ANALYSIS.correlations(D);
+    if (!items.length) {
+      const taps = (D.symptomTaps || []).length;
+      list.innerHTML = `<li class="corr-empty">${taps < 3
+        ? "Log a few symptoms and we'll show what tends to go with them."
+        : "No strong links yet between your symptoms and your readings. That can change as you log more."}</li>`;
+      return;
+    }
+    list.innerHTML = items.map(c => {
+      const s = SYM.lookup(c.symptom, symptomSet);
+      const pct = Math.round(c.share * 100);
+      return `<li class="corr-item" style="--sym:${s.color}">` +
+        `<span class="tap-icon">${ICON.forSymptom(s)}</span>` +
+        `<div class="corr-body"><p>${escapeHtml(WRITER.writeCorrelation(c, s.label))}</p>` +
+        `<div class="corr-bar" role="img" aria-label="${c.hits} of ${c.days} days, versus about 1 in 4 normally">` +
+        `<span class="corr-fill" style="width:${pct}%"></span><span class="corr-usual" style="left:${Math.round(c.usualShare * 100)}%"></span></div>` +
+        `<span class="corr-meta">${pct}% of ${escapeHtml(s.label.toLowerCase())} days · about ${Math.round(c.usualShare * 100)}% of all days</span></div></li>`;
+    }).join("");
   }
 
   // ---------- Screen 3: Trigger Detective ----------

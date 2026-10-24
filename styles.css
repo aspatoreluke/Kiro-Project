@@ -424,3 +424,18 @@ label { display: block; font-weight: 600; margin-bottom: 8px; }
 .btn-icon { display: inline-flex; align-items: center; gap: 8px; }
 .watch-check svg { display: block; }
 .step-sep { color: var(--ink-soft); margin: 0 2px; }
+
+/* ---------- Timeline: "What tends to go with your symptoms" ---------- */
+.corr-list { list-style: none; margin: 14px 0 0; padding: 0; display: grid; gap: 10px; }
+.corr-item {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px; padding: 14px;
+}
+.corr-item .tap-icon { flex: none; }
+.corr-body { flex: 1; min-width: 0; }
+.corr-body p { margin: 0 0 10px; font-size: 1rem; }
+.corr-bar { position: relative; height: 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
+.corr-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 999px; background: var(--sym, var(--accent)); }
+.corr-usual { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--ink-soft); }
+.corr-meta { display: block; margin-top: 6px; font-size: 0.8rem; color: var(--ink-soft); }
+.corr-empty { color: var(--ink-soft); }

@@ -145,7 +145,29 @@
     };
   }
 
+  // One plain sentence per correlation. "Often came with", never "caused by".
+  // "Fatigue / crash" -> "Fatigue", custom labels kept as typed.
+  function shortName(label) { return String(label || "This symptom").split(" / ")[0].split("/")[0].trim(); }
+
+  // One plain sentence per correlation. "Often came with", never "caused by".
+  //   e.g. "Fatigue often came after short nights: about 5.2 hours of sleep,
+  //         vs your usual 7.2. (10 of 10 fatigue days)"
+  function writeCorrelation(c, symptomLabel) {
+    const who = shortName(symptomLabel);
+    const fmt = v => (c.field === "steps" ? Math.round(v).toLocaleString("en-US") : v);
+    const unit = c.field === "steps" ? " steps" : (c.unit ? " " + c.unit : "");
+    const low = c.direction === "low";
+    let when;
+    if (c.field === "sleep_hours") when = low ? "after short nights" : "after long nights";
+    else if (c.field === "steps") when = low ? "on less active days" : "on more active days";
+    else when = `when your ${c.metric} was ${low ? "lower" : "higher"} than usual`;
+    const raw = `${who} often came ${when}: about ${fmt(c.typical)}${unit}, vs your usual ${fmt(c.usual)}. ` +
+                `(${c.hits} of ${c.days} ${who.toLowerCase()} days)`;
+    return SAFETY.assertSafeText(raw).text;
+  }
+
   window.RECEIPTS_WRITER = {
+    writeCorrelation,
     generate,          // the template "model"
     writeFinding, writeFindingRich,
     writeTodayMessage, writeTodayMessageRich,

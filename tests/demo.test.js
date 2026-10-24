@@ -32,6 +32,20 @@ test("every generated demo sentence passes the safety guard", () => {
   });
 });
 
+test("timeline summary finds the seeded links in Maya's data, in plain safe words", () => {
+  const g = load();
+  const A = g.RECEIPTS_ANALYSIS, W = g.RECEIPTS_WRITER, S = g.RECEIPTS_SAFETY, SY = g.RECEIPTS_SYMPTOMS;
+  const cs = A.correlations();
+  const has = (sym, field, dir) => cs.some(c => c.symptom === sym && c.field === field && c.direction === dir);
+  assert.ok(has("fatigue", "sleep_hours", "low"), "fatigue + short sleep");
+  assert.ok(has("nausea", "resting_hr_bpm", "high"), "nausea + high resting HR");
+  cs.forEach(c => {
+    const t = W.writeCorrelation(c, SY.lookup(c.symptom).label);
+    assert.deepStrictEqual(S.scan(t), []);
+    assert.match(t, /often came/);
+  });
+});
+
 test("a logged tap lands on the latest day so it appears on the timeline", () => {
   const g = load();
   const DS = g.RECEIPTS_DATASOURCE;

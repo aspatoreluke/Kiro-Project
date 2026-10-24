@@ -8,7 +8,7 @@
    NO real personal health information is used. All values are
    generated here with gentle noise so charts look natural.
 
-   Three patterns are deliberately seeded so the Trigger Detective
+   Four patterns are deliberately seeded so the Trigger Detective
    has something real to find (see analysis.js):
      1) Orthostatic: on most "dizzy" days, resting->standing HR
         jumps 30+ bpm after sitting over an hour.
@@ -16,6 +16,7 @@
         under ~6 hours of sleep (lower recovery + lower HRV).
      3) Pre-menstrual rise: symptoms increase in the ~7 days
         before menstruation.
+     4) Nausea on days resting heart rate runs higher than usual.
    ============================================================ */
 
 (function () {
@@ -71,6 +72,9 @@
   // These are a strict subset of dizzyDays so the jumps land on dizzy days.
   const orthostaticHitDays = new Set([57, 54, 49, 44, 40, 33, 28, 16, 6]);
 
+  // Days with a higher resting heart rate + nausea (pattern 4).
+  const nauseaDays = new Set([55, 50, 45, 37, 31, 25, 19, 13, 8]);
+
   const SYMPTOMS_POOL = ["dizzy", "brain_fog", "fatigue", "pain", "palpitations", "nausea"];
 
   for (let daysAgo = DAYS - 1; daysAgo >= 0; daysAgo--) {
@@ -90,6 +94,9 @@
     let skinTemp = BASE.skinTemp + noise(0.12);
 
     if (shortSleep) { recovery -= 22; hrv -= 16; restingHr += 5; }
+    // Seeded pattern 4: nausea on days resting heart rate runs high (no rand() calls,
+    // so the other seeded patterns stay exactly the same).
+    if (nauseaDays.has(daysAgo)) { restingHr += 9; }
     if (premenstrual) { recovery -= 8; hrv -= 6; restingHr += 2; skinTemp += 0.25; }
 
     const dayStrain = round(8 + noise(4) + (shortSleep ? -1 : 0), 1);
@@ -146,6 +153,10 @@
     if (shortSleep) {
       const t = new Date(d); t.setHours(15, 10 + Math.round(rand() * 20), 0, 0);
       taps.push({ symptom: "fatigue", when: t, severity: 3 + Math.round(rand() * 2) });
+    }
+    if (nauseaDays.has(daysAgo)) {
+      const t = new Date(d); t.setHours(12, 40, 0, 0);
+      taps.push({ symptom: "nausea", when: t, severity: 3 });
     }
     // Pre-menstrual: extra symptoms sprinkled in the week before period.
     if (premenstrual && rand() > 0.35) {

@@ -109,3 +109,37 @@ test("PROPERTY: cleaning is stable — running clean data through the model agai
     return JSON.stringify(once) === JSON.stringify(twice);
   }), RUNS);
 });
+
+// ---------- Quick correlations (timeline summary) ----------
+test("PROPERTY: correlations are only reported for metrics the data has, and are honest about counts", () => {
+  fc.assert(fc.property(dataset, ds => {
+    const cs = A.correlations(ds);
+    if (cs.length > 5) return false;
+    return cs.every(c =>
+      ds.availability[c.field] &&
+      c.hits >= 3 && c.hits <= c.days &&
+      c.share === c.hits / c.days && c.share >= 0.5 && c.share >= 2 * c.usualShare &&
+      c.p <= 0.02 && Number.isFinite(c.typical) && Number.isFinite(c.usual));
+  }), RUNS);
+});
+
+test("PROPERTY: every correlation sentence passes the safety guard and never says 'cause'", () => {
+  fc.assert(fc.property(dataset, ds => A.correlations(ds).every(c => {
+    const t = W.writeCorrelation(c, c.symptom);
+    return S.scan(t).length === 0 && !/caus/i.test(t) && !/NaN|undefined|null/.test(t);
+  })), RUNS);
+});
+
+test("PROPERTY: symptoms logged at random days never produce a correlation (no false alarms from chance)", () => {
+  // Plausible readings, taps on uniformly random days: there's no real link to find.
+  const days = fc.array(fc.record({
+    date: isoDate, sleep_hours: fc.double({ min: 4, max: 9, noNaN: true }),
+    resting_hr_bpm: fc.integer({ min: 50, max: 80 }), hrv_ms: fc.integer({ min: 20, max: 90 })
+  }), { minLength: 30, maxLength: 90 });
+  fc.assert(fc.property(days, fc.array(fc.nat(), { minLength: 4, maxLength: 8 }), (raw, picks) => {
+    const ds = MODEL.buildDataset(raw);
+    if (ds.daily.length < 20) return true;
+    ds.symptomTaps = picks.map(i => ({ date: ds.daily[i % ds.daily.length].date, symptom_id: "pain" }));
+    return A.correlations(ds).length === 0;
+  }), { numRuns: 300 });
+});
