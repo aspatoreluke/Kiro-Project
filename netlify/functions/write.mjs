@@ -56,6 +56,31 @@ export function sanitize(body) {
   return { findings, today: { pacing: t.pacing === true, reasons, checked }, days };
 }
 
+// The exact meaning of each pattern, built here from numbers only. The AI may
+// reword this but not change it. (First live test: given raw numbers, the AI
+// sometimes paired them wrong, e.g. "12 days with big jumps" instead of 9 of 12.)
+export function factSentence(kind, f) {
+  const v = k => (f[k] === undefined ? "?" : f[k]);
+  if (kind === "orthostatic") {
+    return `On ${v("bigJumpDays")} of the ${v("totalDizzyDays")} days the person logged feeling dizzy, their heart rate rose about ${v("avgJump")} bpm within ${v("windowMinutes")} minutes of standing up after sitting a while. Their own usual rise on standing is about ${v("baselineJump")} bpm.`;
+  }
+  if (kind === "shortsleep") {
+    return `On ${v("afterShort")} of the ${v("totalCrashDays")} days the person logged a fatigue crash, the night before had under ${v("threshold")} hours of sleep. Their sleep before crash days averaged about ${v("avgSleepOnCrash")} hours; their own usual is about ${v("baselineSleep")} hours.`;
+  }
+  if (kind === "cycle") {
+    return `About ${v("sharePct")}% of the person's symptom taps fell in the ${v("windowDays")} days before a period, even though that week is only about ${v("expectedPct")}% of their cycle.`;
+  }
+  return "";
+}
+
+function todaySentence(t) {
+  if (!t.checked.length) return "There isn't enough data today to compare with their usual.";
+  if (!t.reasons.length) return "Today's signals are close to the person's own usual range.";
+  const names = { recovery: "recovery score", hrv: "HRV (ms)", sleep: "sleep last night (hours)", restingHr: "resting heart rate (bpm)" };
+  const bits = t.reasons.map(r => `${names[r.k]} is ${r.v} vs their usual ~${r.base}`);
+  return `Today looks like the lead-up to some of their harder days: ${bits.join("; ")}.`;
+}
+
 export function buildPrompt(p) {
   const rules = [
     "You write short, warm, plain-language text for Receipts, an app that helps people with chronic, hard-to-diagnose symptoms share patterns from their wearable with their doctor.",
@@ -67,11 +92,11 @@ export function buildPrompt(p) {
     "- Calm, kind, non-alarming. About an 8th-grade reading level. Each sentence under 40 words.",
     "- The doctor decides what patterns mean.",
     "",
-    "PATTERNS (kind + facts):",
-    JSON.stringify(p.findings),
+    "PATTERNS. Each has an exact FACT sentence. Rewrite it warmly in your own words, but keep its",
+    "meaning exactly: same numbers, same 'X of Y' pairing, same comparison. Do not add facts.",
+    ...p.findings.map(f => `- ${f.kind}: FACT: ${factSentence(f.kind, f.facts)}`),
     "",
-    "TODAY (pacing = today looks like the lead-up to harder days; reasons compare today to their usual):",
-    JSON.stringify(p.today),
+    `TODAY. FACT: ${todaySentence(p.today)} ${p.today.pacing ? "Gently suggest taking it easy and pacing." : ""}`,
     p.days ? `DAYS OF DATA: ${p.days}` : "",
     "",
     "Return ONLY JSON with this exact shape:",
@@ -173,15 +198,18 @@ export default async function handler(req) {
   const claude = process.env.ANTHROPIC_API_KEY;
   if (!gemini && !claude) return json(503, { error: "no-key" });
 
+  const t0 = Date.now();
   try {
     const prompt = buildPrompt(payload);
     const out = await withTimeout(signal => gemini ? callGemini(prompt, gemini, signal) : callClaude(prompt, claude, signal), SERVER_TIMEOUT_MS);
     const result = parseJson(out.text);
-    if (!result) return json(502, { error: "unparseable" });
-    return json(200, { provider: gemini ? "gemini" : "claude", model: out.model, result });
+    if (!result) return json(502, { error: "unparseable", ms: Date.now() - t0 });
+    return json(200, { provider: gemini ? "gemini" : "claude", model: out.model, ms: Date.now() - t0, result });
   } catch (e) {
-    // Don't leak details (or keys) to the browser.
-    console.error("AI call failed:", e && e.message);
-    return json(502, { error: e && e.name === "AbortError" ? "timeout" : "upstream" });
+    // Only a short reason like "gemini 429 (model)", never response bodies or keys.
+    const msg = String((e && e.message) || "");
+    console.error("AI call failed:", msg);
+    const detail = /^(gemini|claude) \d{3}( \([\w.-]+(, thinking)?\))?$/.test(msg) ? msg : undefined;
+    return json(502, { error: e && e.name === "AbortError" ? "timeout" : "upstream", detail, ms: Date.now() - t0 });
   }
 }

@@ -88,6 +88,14 @@ test("gives up on a slow AI instead of hanging", async () => {
   assert.ok(Date.now() - t0 < 9000);
 });
 
+test("the prompt gives the AI the exact fact pairing to reword", async () => {
+  const { buildPrompt, sanitize } = await import(FN);
+  const prompt = buildPrompt(sanitize(GOOD_BODY));
+  assert.match(prompt, /On 9 of the 12 days the person logged feeling dizzy/);
+  assert.match(prompt, /usual rise on standing is about 12 bpm/);
+  assert.match(prompt, /Never diagnose/);
+});
+
 test("upstream errors don't leak details", async () => {
   process.env.GEMINI_API_KEY = "secret-key-123";
   global.fetch = fakeFetch("{}", { status: 500 });
