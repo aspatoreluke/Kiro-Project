@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Receipts — your body's evidence, in plain sight</title>
   <meta name="description" content="Receipts helps people with chronic, hard-to-diagnose conditions turn wearable data into clear patterns to share with their doctor. Not a diagnosis — your clinician decides." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%BE%3C/text%3E%3C/svg%3E" />
   <link rel="stylesheet" href="styles.css" />
   <!-- Chart.js for the timeline and mini-charts -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -17,6 +18,9 @@
       <span class="brand-name">Receipts</span>
     </div>
     <p class="brand-tagline">Your body's evidence, in plain sight.</p>
+    <button id="data-chip" class="data-chip" aria-label="Change data source">
+      <span aria-hidden="true">⌚</span> <span id="data-chip-label">Maya (demo data)</span> · <u>Change</u>
+    </button>
   </header>
 
   <main id="app-main">
@@ -53,6 +57,60 @@
           This is me — let's go
         </button>
         <p class="disclaimer-note">This is not a diagnosis — your clinician decides.</p>
+      </div>
+    </section>
+
+    <!-- Connect your wearable -->
+    <section id="screen-connect" class="screen" hidden aria-label="Connect your wearable">
+      <div class="card">
+        <h2>Connect your wearable</h2>
+        <p class="muted">Bring the data your watch already collects. Pick one:</p>
+
+        <div class="privacy-note" role="note">
+          <strong>🔒 Your data stays on this device.</strong>
+          Files are read right here in your browser. Nothing is uploaded to a server or saved anywhere.
+          Refreshing the page clears it.
+        </div>
+
+        <div class="connect-option">
+          <h3>1. Upload an export file</h3>
+          <p class="muted">WHOOP (CSV) or Apple Health (export.zip or export.xml). You can pick more than one WHOOP file.</p>
+          <label class="btn btn-primary file-btn">
+            Choose file
+            <input id="upload-input" type="file" accept=".csv,.xml,.zip,text/csv,text/xml,application/zip" multiple />
+          </label>
+          <div id="upload-progress" class="progress" hidden>
+            <div class="progress-bar" id="upload-progress-bar"></div>
+          </div>
+          <p id="upload-status" class="upload-status" role="status" aria-live="polite"></p>
+          <div id="upload-result"></div>
+          <details class="how-to">
+            <summary>How do I get my export?</summary>
+            <p><strong>Apple Health (iPhone):</strong> open the Health app → tap your profile picture (top right) →
+              scroll down → <em>Export All Health Data</em> → send <code>export.zip</code> to this computer.</p>
+            <p><strong>WHOOP:</strong> WHOOP app → menu → <em>App Settings</em> → <em>Data Export</em>.
+              WHOOP emails you a zip. Unzip it and choose <code>physiological_cycles.csv</code>
+              (and <code>sleeps.csv</code> if you like).</p>
+          </details>
+        </div>
+
+        <div class="connect-option">
+          <h3>2. Use demo data</h3>
+          <p class="muted">Explore with Maya, 24 — 60 days of made-up, WHOOP-style data with clear patterns.</p>
+          <button id="use-demo-btn" class="btn btn-secondary">Use demo data (Maya)</button>
+        </div>
+
+        <div class="connect-option">
+          <h3>3. Connect a WHOOP account</h3>
+          <button id="whoop-connect-btn" class="btn btn-secondary" aria-expanded="false" aria-controls="whoop-soon">
+            Connect WHOOP account (coming soon)
+          </button>
+          <p id="whoop-soon" class="hint" hidden>
+            Coming next: signing in with WHOOP's official developer API, so your data updates
+            automatically. Receipts already uses the same data shape (recovery, HRV, resting heart rate,
+            sleep), so it's a plug-in step. For today, use the WHOOP Data Export file above.
+          </p>
+        </div>
       </div>
     </section>
 
@@ -144,6 +202,9 @@
   <script src="js/data.js"></script>
   <script src="js/adapters/standard-model.js"></script>
   <script src="js/datasource.js"></script>
+  <script src="js/adapters/csv.js"></script>
+  <script src="js/adapters/whoop.js"></script>
+  <script src="js/adapters/apple-health.js"></script>
   <script src="js/symptoms.js"></script>
   <script src="js/safety.js"></script>
   <script src="js/analysis.js"></script>

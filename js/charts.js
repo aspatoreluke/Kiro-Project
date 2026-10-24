@@ -89,7 +89,9 @@
           y1: { display: usesAxis("y1"), position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "Sleep (h)" }, suggestedMin: 0, suggestedMax: 10 },
           y2: { display: usesAxis("y2") && !usesAxis("y1"), position: "right", grid: { drawOnChartArea: !usesAxis("y") }, title: { display: true, text: "Steps" }, beginAtZero: true },
           // Hidden lane at the top of the chart where symptom markers sit.
-          taps: { display: false, min: 0, max: 1.08 }
+          // `axis: "y"` must be explicit: Chart.js can only guess it from a
+          // dataset, and with zero taps there's none (crashed on real uploads).
+          taps: { axis: "y", display: false, min: 0, max: 1.08 }
         }
       }
     });

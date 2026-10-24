@@ -202,6 +202,32 @@ label { display: block; font-weight: 600; margin-bottom: 6px; }
 .today-banner.good { background: var(--good); color: var(--good-ink); }
 .today-banner.neutral { background: #E8F1FA; color: var(--primary); }
 
+/* Data source chip in the header */
+.data-chip {
+  margin-top: 8px; background: #E8F1FA; color: var(--primary); border: none;
+  border-radius: 999px; padding: 8px 14px; font-size: 0.9rem; cursor: pointer; min-height: 40px;
+}
+.data-chip:hover { background: #DBEAF7; }
+
+/* Connect screen */
+.privacy-note {
+  background: #EAF2FB; border-left: 4px solid var(--primary); border-radius: 10px;
+  padding: 12px 14px; margin: 12px 0 18px; font-size: 0.95rem;
+}
+.connect-option { border-top: 1px solid var(--line); padding: 16px 0 6px; }
+.connect-option h3 { margin: 0 0 4px; font-size: 1.1rem; color: var(--primary); }
+.file-btn { display: inline-block; position: relative; overflow: hidden; }
+.file-btn input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.file-btn:focus-within { outline: 3px solid var(--accent-soft); }
+.progress { height: 12px; background: #E8F1FA; border-radius: 999px; margin: 12px 0 4px; overflow: hidden; }
+.progress-bar { height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+.upload-status { min-height: 1.3em; font-weight: 600; }
+.upload-status.error { color: #7A3B1E; }
+.how-to { margin-top: 10px; font-size: 0.95rem; }
+.how-to summary { cursor: pointer; color: var(--accent); font-weight: 600; min-height: 32px; }
+.result-box { background: #F4F8FC; border-radius: 12px; padding: 12px 14px; margin-top: 10px; }
+.result-box ul { margin: 6px 0; padding-left: 18px; }
+
 /* "Not available with this data" box */
 .missing-box {
   background: #F4F8FC; border: 2px dashed var(--line); border-radius: 14px;

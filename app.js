@@ -96,7 +96,7 @@
     symptomSet = editorSet.slice();
     SYM.saveSet(symptomSet);
     SYM.saveConditionNote($("#condition-note").value);
-    showScreen("screen-tap");
+    showScreen("screen-connect"); // next: bring your wearable data (or use the demo)
   });
 
   $("#edit-symptoms-btn").addEventListener("click", () => {
@@ -274,6 +274,110 @@
 
     // Render the mini-charts after the HTML is in the DOM.
     brief.patterns.forEach((p, i) => CHARTS.renderMini("brief-mini-" + i, p.chart));
+  }
+
+  // ---------- Connect your wearable ----------
+  const WHOOP = window.RECEIPTS_ADAPTER_WHOOP;
+  const APPLE = window.RECEIPTS_ADAPTER_APPLE;
+  const MODEL = window.RECEIPTS_MODEL;
+
+  $("#data-chip").addEventListener("click", () => showScreen("screen-connect"));
+  DS.onChange(ds => { $("#data-chip-label").textContent = ds.label; });
+
+  $("#use-demo-btn").addEventListener("click", () => {
+    DS.useDemo();
+    $("#upload-result").innerHTML = "";
+    setUploadStatus("Using Maya's demo data.");
+    showScreen("screen-tap");
+  });
+
+  $("#whoop-connect-btn").addEventListener("click", () => {
+    const panel = $("#whoop-soon");
+    panel.hidden = !panel.hidden;
+    $("#whoop-connect-btn").setAttribute("aria-expanded", String(!panel.hidden));
+  });
+
+  $("#upload-input").addEventListener("change", async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = ""; // allow choosing the same file again
+    if (!files.length) return;
+    $("#upload-result").innerHTML = "";
+    try {
+      const ds = await readExport(files);
+      DS.useUploaded(ds);
+      showUploadResult(ds);
+      setUploadStatus(`Loaded ${ds.daily.length} days from your ${ds.label}.`);
+    } catch (err) {
+      setUploadStatus(err.message || "Something went wrong reading that file.", true);
+    } finally {
+      setProgress(null);
+    }
+  });
+
+  // Figure out what kind of file this is and send it to the right adapter.
+  async function readExport(files) {
+    const name = f => f.name.toLowerCase();
+    const zip = files.find(f => name(f).endsWith(".zip"));
+    const xml = files.find(f => name(f).endsWith(".xml"));
+    const csvs = files.filter(f => name(f).endsWith(".csv"));
+
+    if (zip || xml) {
+      const file = zip || xml;
+      if (xml && /export_cda/.test(name(xml))) {
+        throw new Error("That's export_cda.xml (clinical documents). Choose export.xml from the same folder instead.");
+      }
+      setUploadStatus(`Reading ${file.name} on your device… big files can take a minute.`);
+      setProgress(0);
+      const ds = zip ? await APPLE.parseZip(file, setProgress) : await APPLE.parseFile(file, setProgress);
+      if (!ds.daily.length) throw new Error("We read the file but didn't find any days with heart rate, HRV, sleep, steps, or cycle data.");
+      return ds;
+    }
+
+    if (csvs.length) {
+      setUploadStatus("Reading your WHOOP file(s) on your device…");
+      const texts = await Promise.all(csvs.map(f => f.text()));
+      const whoopTexts = texts.filter(t => WHOOP.detect(t));
+      if (!whoopTexts.length) {
+        throw new Error("We couldn't recognize that CSV. Receipts reads WHOOP's physiological_cycles.csv or sleeps.csv.");
+      }
+      const ds = WHOOP.parse(whoopTexts);
+      if (!ds.daily.length) throw new Error("That WHOOP file didn't have any days we could read.");
+      return ds;
+    }
+
+    throw new Error("Please choose a WHOOP .csv, or an Apple Health export.zip or export.xml.");
+  }
+
+  function showUploadResult(ds) {
+    const have = MODEL.FIELDS.filter(f => ds.availability[f]).map(f => MODEL.LABELS[f]);
+    const missing = MODEL.missingMetrics(ds).map(m => m.label);
+    const first = ds.daily[0].date, last = ds.daily[ds.daily.length - 1].date;
+    const unavailable = ANALYSIS.insightStatus().filter(s => !s.available);
+    $("#upload-result").innerHTML =
+      `<div class="result-box">` +
+      `<p><strong>${ds.daily.length} days</strong> (${first} to ${last}) from your ${escapeHtml(ds.label)}.</p>` +
+      `<p><strong>Found:</strong> ${have.length ? escapeHtml(have.join(", ")) : "nothing we use yet"}.</p>` +
+      (missing.length ? `<p><strong>Not in this file:</strong> ${escapeHtml(missing.join(", "))}.</p>` : "") +
+      (unavailable.length
+        ? `<p>So these insights aren't available yet:</p><ul>` +
+          unavailable.map(s => `<li>${escapeHtml(s.label)} — ${escapeHtml(s.reason)}</li>`).join("") + `</ul>`
+        : "") +
+      (ds.notes.length ? `<p class="hint">${escapeHtml(ds.notes.join(" "))}</p>` : "") +
+      `<button class="btn btn-primary" id="goto-timeline-btn">See my timeline</button>` +
+      `</div>`;
+    $("#goto-timeline-btn").addEventListener("click", () => showScreen("screen-timeline"));
+  }
+
+  function setUploadStatus(msg, isError) {
+    const el = $("#upload-status");
+    el.textContent = msg;
+    el.classList.toggle("error", !!isError);
+  }
+  function setProgress(fraction) {
+    const wrap = $("#upload-progress");
+    if (fraction === null) { wrap.hidden = true; return; }
+    wrap.hidden = false;
+    $("#upload-progress-bar").style.width = Math.round(fraction * 100) + "%";
   }
 
   // ---------- helpers ----------
