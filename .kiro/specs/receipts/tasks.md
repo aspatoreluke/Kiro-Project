@@ -163,7 +163,7 @@ track progress together.
   - _Requirements: 18.4_
 
 ### Priority 5 — Docs
-- [ ] 32. Update JUDGES.md and README.md
+- [x] 32. Update JUDGES.md and README.md
   - Wearable/adapters, privacy, live AI + fallback, PBT (+ catches), new steering/hooks, MCP, Kiro
     tools used, spec-driven vs vibe coding from a non-coder view.
   - _Requirements: 11_
