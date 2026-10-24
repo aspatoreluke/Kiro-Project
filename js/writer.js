@@ -166,7 +166,52 @@
     return SAFETY.assertSafeText(raw).text;
   }
 
+  // ---- Echoes (Today screen) ----
+  // Always describes what happened before, in the person's own history.
+  // Never predicts ("you will", "likely"), never diagnoses.
+  function hm(h) {
+    const total = Math.round(h * 60);
+    return `${Math.floor(total / 60)}h ${String(total % 60).padStart(2, "0")}m`;
+  }
+  const safe = t => SAFETY.assertSafeText(t).text;
+
+  function writeEchoHeadline(e, labelFor) {
+    if (e.state === "few-logs") return safe("Keep logging. After a few more receipts, Receipts can start spotting your patterns.");
+    if (e.state === "no-data") return safe("We don't have enough of today's readings to compare yet. Go at your own pace.");
+    if (e.state === "normal") return safe("Today looks like your normal.");
+    if (e.state === "watch" || !e.headline) return safe("Today mostly looks like your normal, with a few things to keep an eye on.");
+    const h = e.headline;
+    const name = shortName(labelFor(h.symptom)).toLowerCase();
+    return safe(h.matches === h.episodes
+      ? `Today looks a lot like the mornings before your last ${h.episodes} ${name} days.`
+      : `Today looks a lot like the mornings before ${h.matches} of your last ${h.episodes} ${name} days.`);
+  }
+
+  function writeEchoCard(c, labelFor) {
+    const name = shortName(labelFor(c.symptom)).toLowerCase();
+    const low = c.direction === "low";
+    let now, like;
+    if (c.key === "sleep") {
+      now = `You slept ${hm(c.todayValue)} last night, ${low ? "less" : "more"} than your usual ${hm(c.usual)}.`;
+      like = low ? "short sleep like this" : "long sleep like this";
+    } else if (c.key === "hrv") {
+      now = `Your heart rate variability (HRV) is ${Math.abs(Math.round(c.usual - c.todayValue))} ms ${low ? "below" : "above"} your usual.`;
+      like = `HRV this ${low ? "low" : "high"}`;
+    } else if (c.key === "restingHr") {
+      now = `Your resting heart rate is ${c.todayValue} beats per minute, ${low ? "below" : "above"} your usual ${c.usual}.`;
+      like = `a resting heart rate this ${low ? "low" : "high"}`;
+    } else {
+      now = `Your recovery score is ${c.todayValue}, ${low ? "below" : "above"} your usual ${c.usual}.`;
+      like = `a recovery score this ${low ? "low" : "high"}`;
+    }
+    const before = c.hits === c.episodes
+      ? `All ${c.episodes} of your logged ${name} days started with ${like}.`
+      : `${c.hits} of your ${c.episodes} logged ${name} days started with ${like}.`;
+    return { title: labelFor(c.symptom), text: safe(`${now} ${before}`) };
+  }
+
   window.RECEIPTS_WRITER = {
+    writeEchoHeadline, writeEchoCard,
     writeCorrelation,
     generate,          // the template "model"
     writeFinding, writeFindingRich,

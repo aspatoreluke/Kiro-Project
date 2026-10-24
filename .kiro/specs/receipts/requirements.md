@@ -322,3 +322,20 @@ plug into records systems.
 1. IF time allows THEN the doctor brief MAY also export as a FHIR-structured file, clearly labeled a
    prototype.
 2. This is explicitly a stretch goal and the first thing cut under time pressure.
+
+### Requirement 20 — Today screen: "Echoes"
+**User story:** As a patient, I want today compared with the mornings before my own past
+symptom days, so I know what to keep an eye out for, with my history as the evidence.
+
+#### Acceptance criteria
+1. The headline SHALL be generated per person from their own logged symptoms (including custom
+   ones), their own baseline, and only the metrics their data contains.
+2. It SHALL name the symptom whose past lead-up days today most resembles, with the real count;
+   or say kindly that more logs are needed; or say "Today looks like your normal."
+3. Matching past dates SHALL appear as chips that open that date on the Timeline.
+4. Up to 3 "Keep an eye out for…" cards SHALL each cite one reading from today and how often it
+   preceded that symptom in the person's history. Only matches that beat chance are shown.
+5. Wording SHALL describe the past only: never "you will", "likely", or any prediction,
+   diagnosis, or advice. All text passes `assertSafeText()`.
+6. A footer SHALL show days to the appointment (user-set, default 5), receipts collected, and a
+   button to the brief. The date stays in page memory only.

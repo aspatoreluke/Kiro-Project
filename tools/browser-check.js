@@ -119,8 +119,19 @@ async function waitFor(expr, ms = 5000) {
   check("brief has the disclaimer", await evaluate("document.getElementById('brief-page').innerText.includes('not a diagnosis')"));
   await evaluate("document.querySelector('[data-screen=\"screen-today\"]').click()");
   await sleep(300);
-  check("Today shows the score ring", await evaluate("!!document.querySelector('#today-content .today-ring .ring-fill')"),
-        await evaluate("(document.querySelector('.today-ring')||{}).getAttribute ? document.querySelector('.today-ring').getAttribute('aria-label') : ''"));
+  check("Today shows a personal Echo headline", await evaluate("/Today looks a lot like the mornings before/.test(document.querySelector('.echo-headline').innerText)"),
+        await evaluate("document.querySelector('.echo-headline').innerText"));
+  check("Today shows 2+ 'keep an eye out' cards", (await evaluate("document.querySelectorAll('#echo-watch .watch-card').length")) >= 2);
+  check("appointment footer shows days + receipts", await evaluate("/Appointment in 5 days · \\d+ receipts collected · Your brief is ready/.test(document.getElementById('appt-line').innerText)"),
+        await evaluate("document.getElementById('appt-line').innerText"));
+  await evaluate("document.querySelector('.echo-chip').click()");
+  await sleep(500);
+  check("date chip jumps to that day on the Timeline", await evaluate("!document.getElementById('screen-timeline').hidden && !document.getElementById('timeline-focus').hidden && Chart.getChart('timeline-chart').getActiveElements().length > 0"),
+        await evaluate("document.getElementById('timeline-focus').innerText"));
+  await evaluate("document.querySelector('[data-screen=\"screen-today\"]').click()");
+  await sleep(200);
+  await evaluate("document.getElementById('appt-brief-btn').click()");
+  check("'Open my brief' goes to the Brief", await evaluate("!document.getElementById('screen-brief').hidden"));
   check("bundled fonts loaded", await evaluate("document.fonts.ready.then(() => document.fonts.check('700 20px \"Space Grotesk\"') && document.fonts.check('16px Inter'))"));
   await shot("today");
 

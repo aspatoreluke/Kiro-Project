@@ -143,3 +143,17 @@ test("PROPERTY: symptoms logged at random days never produce a correlation (no f
     return A.correlations(ds).length === 0;
   }), { numRuns: 300 });
 });
+
+// ---------- Echoes (Today screen, Req 20) ----------
+test("PROPERTY: Echoes only counts real matches, and every sentence is safe and never predicts", () => {
+  fc.assert(fc.property(dataset, ds => {
+    const e = A.echoes(ds);
+    const label = id => String(id);
+    if (e.headline && !(e.headline.matches >= 2 && e.headline.matches <= e.headline.episodes &&
+        e.headline.dates.length === e.headline.matches)) return false;
+    if (e.cards.length > 3) return false;
+    if (!e.cards.every(c => ds.availability[c.field] && c.hits >= 3 && c.hits <= c.episodes)) return false;
+    const texts = [W.writeEchoHeadline(e, label), ...e.cards.map(c => W.writeEchoCard(c, label).text)];
+    return texts.every(t => S.scan(t).length === 0 && !/\byou will\b|\blikely\b|predict|NaN|undefined/i.test(t));
+  }), RUNS);
+});

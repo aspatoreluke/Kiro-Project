@@ -173,6 +173,24 @@ The track is about wearable data, so we made it real:
   watch). The app lists exactly which insights aren't available and why, instead of guessing.
 - **Watch view:** tap a symptom on a smartwatch face and watch it appear on the timeline.
 
+## 5b. Today screen: "Echoes"
+
+Most wearables give you a readiness score. Receipts does something else: it compares this
+morning's readings with the mornings before **your own** past symptom days, and tells you in
+plain words what to keep an eye out for. The evidence is your own history.
+
+For Maya, it says "Today looks a lot like the mornings before your last 10 fatigue days." Below
+that are cards such as "Your resting heart rate is 72, above your usual 62. 8 of your 11 logged
+nausea days started with a resting heart rate this high."
+
+Everything is generated from that person's data. Someone else, with custom "Migraine" and
+"Hives" symptoms and no sleep data, gets a different headline about their migraines, citing
+their HRV. It uses only the metrics their device recorded, and a match must beat chance.
+
+The wording only describes what happened before. It never says "you will" or "likely", and a
+property test checks that across hundreds of random datasets. Tapping a date jumps to that day
+on the timeline.
+
 ## 6. Privacy approach
 
 Data stays on the device. Uploads are parsed in the browser and never saved. The AI receives only

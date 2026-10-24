@@ -83,7 +83,11 @@
     const premenstrual = isPremenstrual(cycleDay);
 
     const shortSleep = shortSleepDays.has(daysAgo);
-    const sleepHours = shortSleep
+    // "Today" (daysAgo 0) looks like Maya's past lead-up mornings, for the Echoes
+    // demo. Same number of rand() calls, and no tap, so every other day is unchanged.
+    const echoToday = daysAgo === 0;
+    const leadUp = shortSleep || echoToday;
+    const sleepHours = leadUp
       ? round(5.2 + noise(0.5), 1)
       : round(BASE.sleep + noise(0.7), 1);
 
@@ -93,14 +97,15 @@
     let restingHr = BASE.restingHr + noise(3);
     let skinTemp = BASE.skinTemp + noise(0.12);
 
-    if (shortSleep) { recovery -= 22; hrv -= 16; restingHr += 5; }
+    if (leadUp) { recovery -= 22; hrv -= 16; restingHr += 5; }
+    if (echoToday) { restingHr += 4; }
     // Seeded pattern 4: nausea on days resting heart rate runs high (no rand() calls,
     // so the other seeded patterns stay exactly the same).
     if (nauseaDays.has(daysAgo)) { restingHr += 9; }
     if (premenstrual) { recovery -= 8; hrv -= 6; restingHr += 2; skinTemp += 0.25; }
 
-    const dayStrain = round(8 + noise(4) + (shortSleep ? -1 : 0), 1);
-    const steps = Math.max(1200, Math.round(BASE.steps + noise(2600) + (shortSleep ? -1500 : 0)));
+    const dayStrain = round(8 + noise(4) + (leadUp ? -1 : 0), 1);
+    const steps = Math.max(1200, Math.round(BASE.steps + noise(2600) + (leadUp ? -1500 : 0)));
 
     daily.push({
       date: iso(d),

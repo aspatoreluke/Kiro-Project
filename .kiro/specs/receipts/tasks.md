@@ -175,3 +175,6 @@ track progress together.
 ### Final
 - [x] 34. Verify deployed site in a fresh browser; laptop + phone test checklist.
   - _Requirements: all_
+
+- [x] 35. Today screen "Echoes" (Req 20): `echoes()` in analysis.js, wording in writer.js,
+  screen in app.js; tests/echoes.test.js + 1 property test; rollback tag `pre-echoes`.

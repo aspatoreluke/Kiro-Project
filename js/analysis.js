@@ -375,5 +375,108 @@
     }).slice(0, limit);
   }
 
-  root.RECEIPTS_ANALYSIS = { computeBaseline, runDetective, todayScore, insightStatus, correlations, median, mean };
+  // ---- 5) Echoes: does today look like the mornings before past symptoms? ----
+  // A day's readings (last night's sleep, this morning's HRV / resting HR /
+  // recovery) come BEFORE that day's symptoms, so a symptom day's readings are
+  // its "lead-up". We mark each reading low/high vs the person's own quartiles
+  // and look for today's unusual readings in past lead-ups.
+  // Facts only (no sentences); writer.js words them.
+  const ECHO_METRICS = [
+    { field: "sleep_hours",    key: "sleep" },
+    { field: "hrv_ms",         key: "hrv" },
+    { field: "resting_hr_bpm", key: "restingHr" },
+    { field: "recovery_score", key: "recovery" }
+  ]; // steps left out on purpose: today's step count isn't finished yet
+  const ECHO_MIN_EPISODES = 3;  // a symptom needs 3+ past days to compare
+  const ECHO_MIN_MATCHES = 2;   // headline needs 2+ matching past days
+
+  function echoes(ds) {
+    const D = current(ds);
+    const daily = D.daily || [];
+    const a = D.availability || {};
+    const today = daily[daily.length - 1];
+    const byDate = new Map(daily.map(d => [d.date, d]));
+    const result = { state: "few-logs", today: today ? today.date : null, headline: null, cards: [], receipts: (D.symptomTaps || []).length };
+    if (!today) return result;
+
+    // Personal low/high cut-offs per metric that's really in the data.
+    const metrics = ECHO_METRICS.map(m => {
+      if (!a[m.field]) return null;
+      const vals = nums(daily.map(d => d[m.field])).sort((x, y) => x - y);
+      if (vals.length < 8) return null;
+      const low = quantile(vals, 0.25), high = quantile(vals, 0.75);
+      if (!(high > low)) return null;
+      return Object.assign({ low, high, usual: median(vals), n: vals.length }, m);
+    }).filter(Boolean);
+    const flagOf = (day, m) => {
+      const v = day && day[m.field];
+      if (!isNum(v)) return null;
+      // Strictly past the person's quartiles, so ordinary days that tie with
+      // the cut-off (common with whole-number readings) don't count as unusual.
+      return v < m.low ? "low" : v > m.high ? "high" : null;
+    };
+
+    // Past episodes: unique days per symptom, not counting today.
+    const episodes = new Map();
+    (D.symptomTaps || []).forEach(t => {
+      if (t.date === today.date || !byDate.has(t.date)) return;
+      if (!episodes.has(t.symptom_id)) episodes.set(t.symptom_id, new Set());
+      episodes.get(t.symptom_id).add(t.date);
+    });
+    const comparable = [...episodes.entries()].filter(([, s]) => s.size >= ECHO_MIN_EPISODES);
+    if (!comparable.length) return result;                 // too few logs yet
+    if (!metrics.length) { result.state = "no-data"; return result; }
+
+    // Today's unusual readings (vs this person's own usual).
+    const todayFlags = metrics.map(m => ({ m, dir: flagOf(today, m) })).filter(f => f.dir);
+    if (!todayFlags.length) { result.state = "normal"; return result; }
+    const need = Math.max(1, Math.ceil(todayFlags.length / 2));
+    const resembles = day => todayFlags.filter(f => flagOf(day, f.m) === f.dir).length >= need;
+    // How often an ordinary day resembles today (to rule out "everything matches").
+    const others = daily.filter(d => d.date !== today.date);
+    const baseRate = others.length ? others.filter(resembles).length / others.length : 1;
+
+    // Headline: the symptom whose lead-ups today resembles most.
+    let best = null;
+    comparable.forEach(([symptom, dates]) => {
+      const list = [...dates].sort().reverse(); // most recent first
+      const matched = list.filter(d => resembles(byDate.get(d)));
+      const share = matched.length / list.length;
+      if (matched.length < ECHO_MIN_MATCHES || share < Math.max(0.5, 2 * baseRate)) return;
+      if (binomTail(list.length, matched.length, Math.max(baseRate, 0.05)) > 0.05) return;
+      const cand = { symptom, matches: matched.length, episodes: list.length, share, dates: matched };
+      if (!best || cand.matches * cand.share > best.matches * best.share) best = cand;
+    });
+
+    // Cards: one specific reason per symptom, from today's unusual readings.
+    const cards = [];
+    comparable.forEach(([symptom, dates]) => {
+      let top = null;
+      todayFlags.forEach(f => {
+        const vals = [...dates].map(d => flagOf(byDate.get(d), f.m));
+        const known = vals.length; // every past episode day counts, even if this reading was missing
+        const hits = vals.filter(v => v === f.dir).length;
+        const usualRate = others.filter(d => flagOf(d, f.m) === f.dir).length / Math.max(1, others.length);
+        const share = hits / known;
+        if (hits < ECHO_MIN_EPISODES || share < 0.5 || share < 2 * usualRate) return;
+        if (binomTail(known, hits, Math.max(usualRate, 0.05)) > 0.02) return;
+        if (!top || share > top.share || (share === top.share && hits > top.hits)) {
+          const digits = f.m.field === "sleep_hours" ? 1 : 0;
+          top = { symptom, field: f.m.field, key: f.m.key, direction: f.dir, hits, episodes: known, share,
+                  todayValue: roundOrNull(today[f.m.field], digits), usual: roundOrNull(f.m.usual, digits) };
+        }
+      });
+      if (top) cards.push(top);
+    });
+    cards.sort((x, y) => y.share - x.share || y.hits - x.hits);
+    // The headline symptom's card first, then the strongest others; max 3.
+    if (best) cards.sort((x, y) => (y.symptom === best.symptom) - (x.symptom === best.symptom));
+
+    result.state = best ? "echo" : (cards.length ? "watch" : "normal");
+    result.headline = best;
+    result.cards = cards.slice(0, 3);
+    return result;
+  }
+
+  root.RECEIPTS_ANALYSIS = { computeBaseline, runDetective, todayScore, insightStatus, correlations, echoes, median, mean };
 })(typeof window !== "undefined" ? window : globalThis);

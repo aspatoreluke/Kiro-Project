@@ -165,6 +165,7 @@
         <h2 id="timeline-title">Your last 60 days</h2>
         <p class="muted">Your body signals over time — with the moments you tapped marked along the top.</p>
         <p id="timeline-missing" class="hint"></p>
+        <p id="timeline-focus" class="timeline-focus" role="status" aria-live="polite" hidden></p>
         <div class="chart-toggles" id="timeline-toggles"><!-- built by app.js --></div>
         <div class="chart-wrap"><canvas id="timeline-chart" height="260"></canvas></div>
         <div id="timeline-legend" class="symptom-legend"><!-- built by app.js --></div>
@@ -190,9 +191,18 @@
 
     <!-- SCREEN 4: Today -->
     <section id="screen-today" class="screen" hidden aria-label="Today">
-      <div class="card today-card" id="today-card">
-        <span class="eyebrow">Today</span>
+      <div class="card echo-card" id="today-card">
+        <span class="eyebrow">Today · Echoes</span>
         <div id="today-content"><!-- built by app.js --></div>
+      </div>
+      <div id="echo-watch"><!-- "Keep an eye out for" cards, built by app.js --></div>
+      <div class="card appt-card">
+        <p class="appt-line" id="appt-line" role="status" aria-live="polite"></p>
+        <div class="appt-row">
+          <label for="appt-date" class="appt-label">Appointment date</label>
+          <input id="appt-date" type="date" class="text-input appt-input" />
+        </div>
+        <button id="appt-brief-btn" class="btn btn-primary btn-block">Open my brief</button>
       </div>
     </section>
 

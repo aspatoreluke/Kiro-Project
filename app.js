@@ -183,6 +183,7 @@
 
   // ---------- Screen 2: Timeline ----------
   function renderTimeline() {
+    if (!renderTimeline.keepFocus) { const f = $("#timeline-focus"); if (f) f.hidden = true; }
     const togglesWrap = $("#timeline-toggles");
     togglesWrap.innerHTML = "";
     // Only offer toggles for metrics this data actually has.
@@ -285,44 +286,86 @@
 
   // ---------- Screen 4: Today ----------
   function renderToday() {
-    const result = ANALYSIS.todayScore();
-    const written = WRITER.writeTodayMessageRich(result);
-    const msg = written.text;
-    const wrap = $("#today-content");
-    const noData = result.checked.length === 0;
-    const cls = noData ? "neutral" : (result.pacing ? "pace" : "good");
-    const headline = noData ? "Not enough data for today"
-      : (result.pacing ? "Looks like a pacing day" : "Looks like a good day");
-    // Ring: how many of today's signals sit in the person's usual range.
-    const n = result.checked.length;
-    const off = new Set(result.reasons.map(r => r.k));
-    const inRange = n - off.size;
-    const ringColor = noData ? "var(--line)" : (result.pacing ? "var(--pace)" : "var(--accent)");
-    const C = 2 * Math.PI * 92;
-    const frac = n ? inRange / n : 0;
-    const ring =
-      `<div class="today-ring" role="img" aria-label="${inRange} of ${n} signals in your usual range today">` +
-      `<svg viewBox="0 0 220 220" aria-hidden="true">` +
-      `<circle class="ring-track" cx="110" cy="110" r="92" fill="none" stroke-width="16"/>` +
-      `<circle class="ring-fill" cx="110" cy="110" r="92" fill="none" stroke-width="16" stroke-linecap="round"` +
-      ` stroke="${ringColor}" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C * (1 - frac)).toFixed(1)}"/>` +
-      `</svg><div class="ring-center"><div class="ring-num">${n ? inRange : "–"}<small>/${n || "–"}</small></div>` +
-      `<div class="ring-label">signals in your usual range</div></div></div>`;
+    // "Echoes": compare today with the mornings before this person's own past
+    // symptom days (js/analysis.js echoes), worded in js/writer.js.
+    const D = DS.get();
+    const e = ANALYSIS.echoes(D);
+    const labelFor = id => SYM.lookup(id, symptomSet).label;
+    const headline = WRITER.writeEchoHeadline(e, labelFor);
 
-    // One chip per signal we could compare today.
-    const NAMES = { recovery: "Recovery", hrv: "HRV", sleep: "Sleep", restingHr: "Resting HR" };
-    const VALUE = { recovery: d => d.recovery_score, hrv: d => d.hrv_ms + " ms", sleep: d => d.sleep_hours + " h", restingHr: d => d.resting_hr_bpm + " bpm" };
-    const chips = result.checked.map(k =>
-      `<div class="signal-chip ${off.has(k) ? "off" : "ok"}"><span class="eyebrow">${NAMES[k]}</span>` +
-      `<div class="val">${escapeHtml(String(VALUE[k](result.today)))}</div>` +
-      `<div class="state">${off.has(k) ? "Outside your usual" : "In your usual range"}</div></div>`).join("");
+    let chips = "";
+    if (e.headline) {
+      chips = `<p class="echo-sub">Tap a day to see it on your timeline:</p><div class="echo-chips">` +
+        e.headline.dates.slice(0, 6).map(d =>
+          `<button class="echo-chip" data-date="${d}">${escapeHtml(shortDate(d))}</button>`).join("") +
+        `</div>`;
+    }
+    $("#today-content").innerHTML =
+      `<p class="echo-headline">${escapeHtml(headline)}</p>` + chips +
+      `<p class="echo-note">Based only on your own history. This is not a diagnosis — your clinician decides.</p>`;
+    $$("#today-content .echo-chip").forEach(btn =>
+      btn.addEventListener("click", () => focusTimelineDate(btn.dataset.date)));
 
-    wrap.innerHTML =
-      ring +
-      `<div class="today-banner ${cls}">${headline}</div>` +
-      (chips ? `<div class="signal-chips">${chips}</div>` : "") +
-      `<p class="today-why">${escapeHtml(msg)}${aiTag(written.ai)}</p>` +
-      `<p class="disclaimer-note">This is not a diagnosis — your clinician decides.</p>`;
+    // "Keep an eye out for..." cards: only ones backed by matches in their data.
+    const cards = e.cards.map(c => {
+      const w = WRITER.writeEchoCard(c, labelFor);
+      const s = SYM.lookup(c.symptom, symptomSet);
+      return `<div class="card watch-card" style="--sym:${s.color}">` +
+        `<span class="tap-icon">${ICON.forSymptom(s)}</span>` +
+        `<div><p class="watch-card-title">${escapeHtml(w.title)}</p><p class="watch-card-text">${escapeHtml(w.text)}</p></div></div>`;
+    }).join("");
+    $("#echo-watch").innerHTML = cards
+      ? `<span class="eyebrow echo-watch-label">Keep an eye out for…</span>${cards}` : "";
+
+    renderAppointment(e.receipts);
+  }
+
+  // Appointment footer. Kept in page memory only (privacy steering).
+  let appointmentDate = null;
+  function isoLocal(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+  function renderAppointment(receipts) {
+    const input = $("#appt-date");
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (!appointmentDate) { appointmentDate = new Date(today); appointmentDate.setDate(today.getDate() + 5); }
+    input.value = isoLocal(appointmentDate);
+    input.min = isoLocal(today);
+    const days = Math.round((appointmentDate - today) / 86400000);
+    const when = days <= 0 ? "Appointment today" : days === 1 ? "Appointment tomorrow" : `Appointment in ${days} days`;
+    $("#appt-line").textContent = `${when} · ${receipts} receipt${receipts === 1 ? "" : "s"} collected · Your brief is ready`;
+  }
+  $("#appt-date").addEventListener("change", ev => {
+    const v = ev.target.value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return;
+    const [y, m, d] = v.split("-").map(Number);
+    appointmentDate = new Date(y, m - 1, d);
+    renderAppointment(DS.get().symptomTaps.length);
+  });
+  $("#appt-brief-btn").addEventListener("click", () => showScreen("screen-brief"));
+
+  function shortDate(iso) {
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  }
+
+  // Jump to a date on the Timeline and highlight it.
+  function focusTimelineDate(iso) {
+    showScreen("screen-timeline");
+    const chart = window.Chart && Chart.getChart("timeline-chart");
+    const note = $("#timeline-focus");
+    note.hidden = false;
+    note.textContent = `Showing ${shortDate(iso)}, one of the past days today resembles.`;
+    if (!chart) return;
+    const idx = chart.data.labels.indexOf(iso.slice(5));
+    const ds0 = chart.data.datasets.findIndex(d => d.type !== "scatter");
+    if (idx < 0 || ds0 < 0) return;
+    chart.setActiveElements([{ datasetIndex: ds0, index: idx }]);
+    const pt = chart.getDatasetMeta(ds0).data[idx];
+    if (pt) chart.tooltip.setActiveElements([{ datasetIndex: ds0, index: idx }], { x: pt.x, y: pt.y });
+    chart.update("none");
+    const wrap = document.querySelector("#screen-timeline .chart-wrap");
+    if (wrap) wrap.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }
 
   // ---------- Screen 5: Brief ----------
