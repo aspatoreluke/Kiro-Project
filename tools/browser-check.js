@@ -188,6 +188,15 @@ async function waitFor(expr, ms = 5000) {
     console.log("   today:", await evaluate("document.getElementById('today-content').innerText.replace(/\\n+/g,' | ')"));
   }
 
+  // Design rule: outline icons only, no emoji anywhere on any screen.
+  const emoji = await evaluate(`(() => {
+    const re = /[\\u{1F000}-\\u{1FAFF}\\u{2600}-\\u{27BF}\\u{2B00}-\\u{2BFF}\\u{FE0F}]/u;
+    const all = [...document.querySelectorAll('.screen')].map(s => s.innerHTML).join(' ') + document.querySelector('.bottom-nav').innerHTML + document.querySelector('.app-header').innerHTML;
+    const m = all.match(re); return m ? m[0] : '';
+  })()`);
+  check("no emoji anywhere (outline icons only)", !emoji, emoji || "none");
+  check("symptom buttons use outline icons", await evaluate("document.querySelectorAll('#tap-buttons .tap-icon svg.ic').length >= 6"));
+
   check("no JavaScript errors on the page", errors.length === 0, errors.join(" || ") || "none");
   ws.close(); chrome.kill();
   await new Promise(r => { chrome.once("exit", r); setTimeout(r, 3000); });

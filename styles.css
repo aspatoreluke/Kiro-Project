@@ -281,11 +281,12 @@ label { display: block; font-weight: 600; margin-bottom: 8px; }
 .watch-face-time { text-align: center; font: 700 1rem var(--display); color: var(--accent); }
 .watch-face-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; max-height: 222px; overflow-y: auto; padding-bottom: 6px; }
 .watch-btn {
-  border: none; border-radius: 22px; padding: 10px 4px; min-height: 64px;
-  color: #fff; font: 700 0.78rem var(--font); cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  border: 1px solid #2A333F; border-radius: 22px; padding: 10px 4px; min-height: 64px;
+  background: #12171E; color: #fff; font: 700 0.78rem var(--font); cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
 }
-.watch-btn .watch-icon { font-size: 1.35rem; }
+.watch-btn .watch-icon { color: var(--sym, var(--accent)); }
+
 .watch-btn:active { transform: scale(0.94); }
 .watch-btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 .watch-face-done {
@@ -403,3 +404,23 @@ label { display: block; font-weight: 600; margin-bottom: 8px; }
 @media (min-width: 620px) {
   .tap-buttons { grid-template-columns: 1fr 1fr 1fr; }
 }
+
+/* ---------- Outline icons (js/icons.js) ---------- */
+.ic { display: block; width: 24px; height: 24px; flex: none; }
+.tap-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 12px;
+  color: var(--sym, var(--accent)); background: var(--surface);
+  border: 1px solid var(--line);
+}
+.tap-icon .ic { width: 22px; height: 22px; }
+.watch-icon { display: inline-flex; }
+.watch-icon .ic { width: 22px; height: 22px; }
+.symptom-chip .chip-icon { display: inline-flex; color: var(--chip, var(--ink-soft)); font-size: 0; }
+.symptom-chip .chip-icon .ic { width: 18px; height: 18px; }
+.symptom-chip .chip-remove { display: inline-flex; font-size: 0; color: var(--ink-soft); }
+.symptom-chip .chip-remove .ic { width: 15px; height: 15px; stroke-width: 2.2; }
+.symptom-chip:hover .chip-remove { color: var(--ink); }
+.btn-icon { display: inline-flex; align-items: center; gap: 8px; }
+.watch-check svg { display: block; }
+.step-sep { color: var(--ink-soft); margin: 0 2px; }

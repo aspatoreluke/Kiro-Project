@@ -12,6 +12,7 @@
   const ANALYSIS = window.RECEIPTS_ANALYSIS;
   const WRITER = window.RECEIPTS_WRITER;
   const CHARTS = window.RECEIPTS_CHARTS;
+  const ICON = window.RECEIPTS_ICONS;
 
   // Current patient symptom set (loaded from localStorage or default).
   let symptomSet = SYM.loadSet();
@@ -71,10 +72,11 @@
       const chip = document.createElement("div");
       chip.className = "symptom-chip selected";
       chip.style.borderColor = s.color;
+      chip.style.setProperty("--chip", s.color);
       chip.innerHTML =
-        `<span class="chip-icon">${s.icon}</span>` +
+        `<span class="chip-icon">${ICON.forSymptom(s)}</span>` +
         `<span class="chip-label">${escapeHtml(s.label)}</span>` +
-        `<span class="chip-remove" aria-label="Remove ${escapeHtml(s.label)}">✕</span>`;
+        `<span class="chip-remove" aria-label="Remove ${escapeHtml(s.label)}">${ICON.svg("close")}</span>`;
       chip.querySelector(".chip-remove").addEventListener("click", (e) => {
         e.stopPropagation();
         editorSet.splice(idx, 1);
@@ -90,7 +92,8 @@
       const lib = SYM.LIBRARY[id];
       const chip = document.createElement("div");
       chip.className = "symptom-chip";
-      chip.innerHTML = `<span class="chip-icon">${lib.icon}</span><span>${lib.label}</span><span class="chip-remove">＋</span>`;
+      chip.style.setProperty("--chip", lib.color);
+      chip.innerHTML = `<span class="chip-icon">${ICON.forSymptom({ id })}</span><span>${lib.label}</span><span class="chip-remove" aria-hidden="true">${ICON.svg("plus")}</span>`;
       chip.addEventListener("click", () => {
         editorSet.push({ id, ...lib, custom: false });
         renderSymptomEditor();
@@ -139,7 +142,7 @@
       const btn = document.createElement("button");
       btn.className = "tap-btn";
       btn.style.setProperty("--sym", s.color); // colored edge on the card
-      btn.innerHTML = `<span class="tap-icon" aria-hidden="true">${s.icon}</span><span>${escapeHtml(s.label)}</span>`;
+      btn.innerHTML = `<span class="tap-icon">${ICON.forSymptom(s)}</span><span>${escapeHtml(s.label)}</span>`;
       btn.addEventListener("click", () => logTap(s));
       wrap.appendChild(btn);
     });
@@ -158,9 +161,9 @@
     symptomSet.forEach(s => {
       const btn = document.createElement("button");
       btn.className = "watch-btn";
-      btn.style.background = s.color;
+      btn.style.setProperty("--sym", s.color);
       btn.setAttribute("aria-label", "Log " + s.label);
-      btn.innerHTML = `<span class="watch-icon" aria-hidden="true">${s.icon}</span><span>${escapeHtml(s.label)}</span>`;
+      btn.innerHTML = `<span class="watch-icon">${ICON.forSymptom(s)}</span><span>${escapeHtml(s.label)}</span>`;
       btn.addEventListener("click", () => {
         DS.logTap(s.id);
         $("#watch-face-done-text").textContent = `${s.label} logged · ${nowLabel()}`;
@@ -175,7 +178,7 @@
 
   function logTap(symptom) {
     DS.logTap(symptom.id);
-    $("#tap-confirm").textContent = `Logged "${symptom.label}" at ${nowLabel()} \u2713 \u2014 it's on your timeline now`;
+    $("#tap-confirm").textContent = `Logged "${symptom.label}" at ${nowLabel()} — it's on your timeline now`;
   }
 
   // ---------- Screen 2: Timeline ----------
@@ -211,7 +214,7 @@
     symptomSet.forEach(s => {
       const item = document.createElement("span");
       item.className = "legend-item";
-      item.innerHTML = `<span class="legend-dot" style="background:${s.color}"></span>${s.icon} ${escapeHtml(s.label)}`;
+      item.innerHTML = `<span class="legend-dot" style="background:${s.color}"></span>${escapeHtml(s.label)}`;
       legend.appendChild(item);
     });
   }
@@ -308,7 +311,7 @@
   }
 
   $("#send-doctor-btn").addEventListener("click", () => {
-    $("#send-confirm").textContent = "Your brief is ready to share — (demo) sent to your doctor ✓";
+    $("#send-confirm").textContent = "Your brief is ready to share — (demo) sent to your doctor.";
   });
   $("#print-brief-btn").addEventListener("click", () => window.print());
 

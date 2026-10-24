@@ -17,18 +17,18 @@
 
   // Starter library: id -> label, icon, color
   const LIBRARY = {
-    dizzy:        { label: "Dizzy",            icon: "💫", color: "#3E7CB1" },
-    brain_fog:    { label: "Brain fog",        icon: "🌫️", color: "#6BA8D6" },
-    fatigue:      { label: "Fatigue / crash",  icon: "🔋", color: "#1B3A5B" },
-    pain:         { label: "Pain",             icon: "⚡", color: "#5B6FB1" },
-    palpitations: { label: "Palpitations",     icon: "💓", color: "#B15B7C" },
-    nausea:       { label: "Nausea",           icon: "🤢", color: "#5BA38A" },
-    headache:     { label: "Headache",         icon: "🤕", color: "#8A6BB1" },
-    flushing:     { label: "Flushing / hives", icon: "🔥", color: "#C57B5B" },
-    breath:       { label: "Short of breath",  icon: "🌬️", color: "#4FA0B1" },
-    tingling:     { label: "Numbness/tingling",icon: "✨", color: "#7C8AB1" },
-    bloating:     { label: "Bloating",         icon: "🎈", color: "#5BA3A0" },
-    light_sens:   { label: "Light sensitivity",icon: "🔆", color: "#B1A05B" }
+    dizzy:        { label: "Dizzy",            icon: "dizzy", color: "#7FB2FF" },
+    brain_fog:    { label: "Brain fog",        icon: "cloud", color: "#9DB4D8" },
+    fatigue:      { label: "Fatigue / crash",  icon: "battery", color: "#C59BFF" },
+    pain:         { label: "Pain",             icon: "bolt", color: "#FF9F7A" },
+    palpitations: { label: "Palpitations",     icon: "heartbeat", color: "#FF8FB8" },
+    nausea:       { label: "Nausea",           icon: "waves", color: "#6EDCB0" },
+    headache:     { label: "Headache",         icon: "head", color: "#B9A3FF" },
+    flushing:     { label: "Flushing / hives", icon: "flame", color: "#FFB27A" },
+    breath:       { label: "Short of breath",  icon: "wind", color: "#6FD3F0" },
+    tingling:     { label: "Numbness/tingling",icon: "sparkle", color: "#E7D97A" },
+    bloating:     { label: "Bloating",         icon: "circle", color: "#8FE3D0" },
+    light_sens:   { label: "Light sensitivity",icon: "sun", color: "#F5D36B" }
   };
 
   // Default starter set (the original six).
@@ -84,14 +84,14 @@
   }
 
   // Build a custom symptom from free text.
-  const CUSTOM_COLORS = ["#3E7CB1", "#6BA8D6", "#5B6FB1", "#5BA38A", "#8A6BB1", "#C57B5B"];
+  const CUSTOM_COLORS = ["#7FB2FF", "#6EDCB0", "#C59BFF", "#FFB27A", "#6FD3F0", "#FF8FB8"];
   let _customCount = 0;
   function makeCustom(name) {
     const clean = String(name || "").trim().slice(0, 40);
     if (!clean) return null;
     const id = "custom_" + clean.toLowerCase().replace(/[^a-z0-9]+/g, "_") + "_" + (++_customCount);
     const color = CUSTOM_COLORS[_customCount % CUSTOM_COLORS.length];
-    return { id, label: clean, icon: "📝", color, custom: true };
+    return { id, label: clean, icon: "tag", color, custom: true };
   }
 
   // Look up display info for any symptom id (library, custom in set, or raw fallback).
@@ -99,7 +99,7 @@
     if (LIBRARY[id]) return { id, ...LIBRARY[id] };
     const inSet = (set || []).find(s => s.id === id);
     if (inSet) return inSet;
-    return { id, label: id.replace(/_/g, " "), icon: "📝", color: "#3E7CB1" };
+    return { id, label: id.replace(/_/g, " "), icon: "tag", color: "#9DB4D8" };
   }
 
   window.RECEIPTS_SYMPTOMS = {

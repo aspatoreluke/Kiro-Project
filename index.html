@@ -95,9 +95,9 @@
           <div id="upload-result"></div>
           <details class="how-to">
             <summary>How do I get my export?</summary>
-            <p><strong>Apple Health (iPhone):</strong> open the Health app → tap your profile picture (top right) →
-              scroll down → <em>Export All Health Data</em> → send <code>export.zip</code> to this computer.</p>
-            <p><strong>WHOOP:</strong> WHOOP app → menu → <em>App Settings</em> → <em>Data Export</em>.
+            <p><strong>Apple Health (iPhone):</strong> open the Health app <span class="step-sep" aria-hidden="true">›</span> tap your profile picture (top right) →
+              scroll down <span class="step-sep" aria-hidden="true">›</span> <em>Export All Health Data</em> <span class="step-sep" aria-hidden="true">›</span> send <code>export.zip</code> to this computer.</p>
+            <p><strong>WHOOP:</strong> WHOOP app <span class="step-sep" aria-hidden="true">›</span> menu <span class="step-sep" aria-hidden="true">›</span> <em>App Settings</em> <span class="step-sep" aria-hidden="true">›</span> <em>Data Export</em>.
               WHOOP emails you a zip. Unzip it and choose <code>physiological_cycles.csv</code>
               (and <code>sleeps.csv</code> if you like).</p>
           </details>
@@ -134,7 +134,7 @@
         <p id="tap-confirm" class="tap-confirm" role="status" aria-live="polite"></p>
       </div>
       <div class="edit-symptoms-link">
-        <button id="open-watch-btn" class="btn btn-secondary">Open watch view</button>
+        <button id="open-watch-btn" class="btn btn-secondary btn-icon"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="5.5" width="12" height="13" rx="3.5"/><path d="M9 5.5 9.5 2.5h5l.5 3M9 18.5l.5 3h5l.5-3"/><path d="M12 9.5V12l1.8 1.2"/></svg>Open watch view</button>
         <button id="edit-symptoms-btn" class="btn btn-link">Edit my symptoms</button>
       </div>
     </section>
@@ -148,13 +148,13 @@
           <div class="watch-face-time" id="watch-face-time">10:09</div>
           <div class="watch-face-grid" id="watch-face-grid"><!-- built by app.js --></div>
           <div class="watch-face-done" id="watch-face-done" hidden role="status" aria-live="polite">
-            <div class="watch-check" aria-hidden="true">✓</div>
+            <div class="watch-check" aria-hidden="true"><svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12.5 9.5 17.5 19.5 6.5"/></svg></div>
             <div id="watch-face-done-text">Logged</div>
           </div>
         </div>
       </div>
       <div class="center">
-        <button id="watch-to-timeline-btn" class="btn btn-primary" hidden>See it on your timeline →</button>
+        <button id="watch-to-timeline-btn" class="btn btn-primary" hidden>See it on your timeline</button>
       </div>
     </section>
 
@@ -237,6 +237,7 @@
   <script src="js/adapters/csv.js"></script>
   <script src="js/adapters/whoop.js"></script>
   <script src="js/adapters/apple-health.js"></script>
+  <script src="js/icons.js"></script>
   <script src="js/symptoms.js"></script>
   <script src="js/safety.js"></script>
   <script src="js/analysis.js"></script>
