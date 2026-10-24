@@ -173,5 +173,5 @@ track progress together.
   - _Requirements: 19_
 
 ### Final
-- [ ] 34. Verify deployed site in a fresh browser; laptop + phone test checklist.
+- [x] 34. Verify deployed site in a fresh browser; laptop + phone test checklist.
   - _Requirements: all_
