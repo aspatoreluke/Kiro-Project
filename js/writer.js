@@ -6,8 +6,8 @@
    the Today message, and both brief versions.
 
    DEFAULT: local templates (no API key, no network, works offline,
-   always works on stage). A single generate() seam lets a live AI
-   model (OpenAI/Claude) be dropped in later with no other changes.
+   always works on stage). When js/ai.js has live AI wording that
+   passed its safety + numbers checks, that's used instead.
 
    EVERY output passes through RECEIPTS_SAFETY.assertSafeText before
    it is returned, so nothing diagnostic can reach the screen.
@@ -62,23 +62,38 @@
     return arr.slice(0, -1).join(", ") + ", and " + arr[arr.length - 1];
   }
 
-  // ---- Public writer functions (each runs through the safety guard) ----
-  function writeFinding(finding) {
-    const raw = generate(finding.kind, finding.facts);
-    return SAFETY.assertSafeText(raw).text;
+  // ---- Live AI (optional) ----
+  // If js/ai.js got good, safety-checked wording back, use it. Otherwise null,
+  // and we use the templates below. The app never waits on the AI.
+  function aiText(...path) {
+    const AI = window.RECEIPTS_AI;
+    return AI ? AI.text(...path) : null;
   }
 
-  function writeTodayMessage(todayResult) {
+  // ---- Public writer functions (each runs through the safety guard) ----
+  // *Rich versions return { text, ai } so the screen can label AI-written text.
+  function writeFindingRich(finding, audience) {
+    const ai = aiText("findings", finding.kind, audience === "doctor" ? "doctor" : "patient");
+    if (ai) return { text: ai, ai: true };
+    const raw = generate(finding.kind, finding.facts);
+    return { text: SAFETY.assertSafeText(raw).text, ai: false };
+  }
+  function writeFinding(finding, audience) { return writeFindingRich(finding, audience).text; }
+
+  function writeTodayMessageRich(todayResult) {
     // If we couldn't compare anything today, say so plainly instead of guessing.
     if (todayResult.checked && todayResult.checked.length === 0) {
-      return "We don't have enough of today's data to compare with your usual yet. " +
-             "Listen to your body and go at your own pace.";
+      return { text: "We don't have enough of today's data to compare with your usual yet. " +
+                     "Listen to your body and go at your own pace.", ai: false };
     }
+    const ai = aiText("today");
+    if (ai) return { text: ai, ai: true };
     const raw = todayResult.pacing
       ? generate("todayPace", todayResult)
       : generate("todayGood", todayResult);
-    return SAFETY.assertSafeText(raw).text;
+    return { text: SAFETY.assertSafeText(raw).text, ai: false };
   }
+  function writeTodayMessage(todayResult) { return writeTodayMessageRich(todayResult).text; }
 
   // Suggested clinician question per finding (evaluation, NOT diagnosis).
   const CLINICIAN_QUESTIONS = {
@@ -95,31 +110,40 @@
   ];
 
   function writeBrief(findings, todayResult, audience) {
-    const intro = audience === "doctor"
+    const doctor = audience === "doctor";
+    const templateIntro = doctor
       ? "Patient-collected wearable patterns, compared to the patient's own baseline. Shared to support the visit."
       : "Here's what your own data has been showing lately — in plain language — so you can talk it through with your doctor.";
+    const aiIntro = aiText(doctor ? "doctorIntro" : "patientIntro");
 
     const patterns = findings.map(f => {
-      const sentence = writeFinding(f);
-      const question = audience === "doctor" ? (CLINICIAN_QUESTIONS[f.kind] || "") : "";
-      return { title: f.title, sentence, question, source: f.source || null, chart: f.chart };
+      const s = writeFindingRich(f, audience);
+      // Clinician questions stay hand-written on purpose: they're the most
+      // medically sensitive wording, so the AI doesn't improvise them.
+      const question = doctor ? (CLINICIAN_QUESTIONS[f.kind] || "") : "";
+      return { title: f.title, sentence: s.text, sentenceAi: s.ai, question, source: f.source || null, chart: f.chart };
     });
 
-    const result = {
+    const aiQuestions = doctor ? null : aiText("patientQuestions");
+    const today = writeTodayMessageRich(todayResult);
+
+    return {
       audience,
-      intro: SAFETY.assertSafeText(intro).text,
+      intro: aiIntro || SAFETY.assertSafeText(templateIntro).text,
+      introAi: !!aiIntro,
       patterns,
-      todayLine: writeTodayMessage(todayResult),
-      patientQuestions: audience === "patient" ? PATIENT_QUESTIONS.slice() : [],
+      todayLine: today.text,
+      todayAi: today.ai,
+      patientQuestions: doctor ? [] : (aiQuestions || PATIENT_QUESTIONS.slice()),
+      questionsAi: !!aiQuestions,
       disclaimer: "This is not a diagnosis — your clinician decides."
     };
-    return result;
   }
 
   window.RECEIPTS_WRITER = {
-    generate,          // the swappable seam
-    writeFinding,
-    writeTodayMessage,
+    generate,          // the template "model"
+    writeFinding, writeFindingRich,
+    writeTodayMessage, writeTodayMessageRich,
     writeBrief
   };
 })();

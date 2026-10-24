@@ -22,8 +22,30 @@
   const $ = (sel) => document.querySelector(sel);
   const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
+  // ---------- Live AI (background, never blocks) ----------
+  const AI = window.RECEIPTS_AI;
+  const AI_LABEL = `<span class="ai-label" title="Written by AI from your patterns, then checked: no diagnosis, no treatment advice, and every number matches your data.">AI-written · checked for safety</span>`;
+  const aiTag = (isAi) => (isAi ? " " + AI_LABEL : "");
+  let currentScreen = null;
+
+  function requestAi() {
+    if (!AI) return;
+    const findings = ANALYSIS.runDetective();
+    AI.refresh(findings, ANALYSIS.todayScore(), DS.get().daily.length);
+  }
+  if (AI) {
+    // When AI wording arrives, redraw whichever text screen is open.
+    AI.onChange(s => {
+      if (s.status === "done" && ["screen-detective", "screen-today", "screen-brief"].includes(currentScreen)) {
+        showScreen(currentScreen, { keepScroll: true });
+      }
+    });
+  }
+  DS.onChange(() => requestAi());
+
   // ---------- Navigation ----------
-  function showScreen(id) {
+  function showScreen(id, opts) {
+    currentScreen = id;
     $$(".screen").forEach(s => { s.hidden = (s.id !== id); });
     const navId = id === "screen-watch" ? "screen-tap" : id; // watch lives under "Log"
     $$(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.screen === navId));
@@ -34,7 +56,7 @@
     if (id === "screen-detective") renderDetective();
     if (id === "screen-today") renderToday();
     if (id === "screen-brief") renderBrief();
-    window.scrollTo(0, 0);
+    if (!(opts && opts.keepScroll)) window.scrollTo(0, 0);
   }
 
   $$(".nav-btn").forEach(btn => {
@@ -215,14 +237,15 @@
     }
 
     findings.forEach((f, i) => {
-      const sentence = WRITER.writeFinding(f);
+      const written = WRITER.writeFindingRich(f, "patient");
+      const sentence = written.text;
       const card = document.createElement("div");
       card.className = "finding";
       const canvasId = "mini-" + i;
       card.innerHTML =
         `<h3>${escapeHtml(f.title)}</h3>` +
         `<span class="baseline-tag">compared to your own baseline</span>` +
-        `<p class="finding-sentence">${escapeHtml(sentence)}</p>` +
+        `<p class="finding-sentence">${escapeHtml(sentence)}${aiTag(written.ai)}</p>` +
         `<div class="mini-chart-wrap"><canvas id="${canvasId}"></canvas></div>` +
         (f.source ? `<p class="source-note">${escapeHtml(f.source.label)} ` +
           `<a href="${f.source.url}" target="_blank" rel="noopener">source</a></p>` : "");
@@ -235,7 +258,8 @@
   // ---------- Screen 4: Today ----------
   function renderToday() {
     const result = ANALYSIS.todayScore();
-    const msg = WRITER.writeTodayMessage(result);
+    const written = WRITER.writeTodayMessageRich(result);
+    const msg = written.text;
     const wrap = $("#today-content");
     const noData = result.checked.length === 0;
     const cls = noData ? "neutral" : (result.pacing ? "pace" : "good");
@@ -243,7 +267,7 @@
       : (result.pacing ? "Looks like a pacing day" : "Looks like a good day");
     wrap.innerHTML =
       `<div class="today-banner ${cls}">${headline}</div>` +
-      `<p class="today-why">${escapeHtml(msg)}</p>` +
+      `<p class="today-why">${escapeHtml(msg)}${aiTag(written.ai)}</p>` +
       `<p class="disclaimer-note">This is not a diagnosis — your clinician decides.</p>`;
   }
 
@@ -279,7 +303,7 @@
       `<div class="brief-head">` +
       `<h2>${briefAudience === "doctor" ? "Pre-Appointment Brief" : "Your Health Receipts"}</h2>` +
       `<p class="who">${escapeHtml(whoLine)}</p>` +
-      `<p>${escapeHtml(brief.intro)}</p>` +
+      `<p>${escapeHtml(brief.intro)}${aiTag(brief.introAi)}</p>` +
       `</div>`;
 
     brief.patterns.forEach((p, i) => {
@@ -287,7 +311,7 @@
       html +=
         `<div class="brief-pattern">` +
         `<h3>${escapeHtml(p.title)}</h3>` +
-        `<p>${escapeHtml(p.sentence)}</p>` +
+        `<p>${escapeHtml(p.sentence)}${aiTag(p.sentenceAi)}</p>` +
         `<div class="mini-chart-wrap"><canvas id="${canvasId}"></canvas></div>` +
         (p.source ? `<p class="source-note">${escapeHtml(p.source.label)}</p>` : "") +
         (p.question ? `<div class="brief-question">Suggested question: ${escapeHtml(p.question)}</div>` : "") +
@@ -295,7 +319,7 @@
     });
 
     if (briefAudience === "patient" && brief.patientQuestions.length) {
-      html += `<h3>3 questions to ask your doctor</h3><ul class="brief-questions-list">`;
+      html += `<h3>3 questions to ask your doctor${aiTag(brief.questionsAi)}</h3><ul class="brief-questions-list">`;
       brief.patientQuestions.forEach(q => { html += `<li>${escapeHtml(q)}</li>`; });
       html += `</ul>`;
     }
@@ -444,6 +468,7 @@
   }
 
   init();
+  requestAi(); // start fetching AI wording in the background right away
 
   // expose for console/debugging during the demo
   window.RECEIPTS_APP = { showScreen };

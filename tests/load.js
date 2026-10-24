@@ -9,6 +9,7 @@ const ORDER = [
   "js/symptoms.js",
   "js/safety.js",
   "js/analysis.js",
+  "js/ai.js",
   "js/writer.js",
   "js/adapters/csv.js",
   "js/adapters/whoop.js",

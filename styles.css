@@ -246,6 +246,15 @@ label { display: block; font-weight: 600; margin-bottom: 6px; }
   display: flex; align-items: center; justify-content: center; font-size: 2.2rem;
 }
 
+/* "AI-written · checked for safety" label */
+.ai-label {
+  display: inline-block; vertical-align: middle; margin-left: 6px;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: 0.01em;
+  color: var(--primary); background: #E8F1FA; border: 1px solid #C9DCEE;
+  border-radius: 999px; padding: 2px 9px; white-space: nowrap;
+}
+@media print { .ai-label { border-color: #999; } }
+
 /* Data source chip in the header */
 .data-chip {
   margin-top: 8px; background: #E8F1FA; color: var(--primary); border: none;
