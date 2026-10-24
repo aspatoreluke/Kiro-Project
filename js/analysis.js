@@ -29,6 +29,7 @@
     const s = nums(arr);
     return s.length ? s.reduce((a, b) => a + b, 0) / s.length : null;
   }
+  function nonNegative(v) { return v === null ? null : Math.max(0, v); }
   function roundOrNull(v, digits) {
     if (!isNum(v)) return null;
     const p = Math.pow(10, digits || 0);
@@ -46,7 +47,10 @@
       hrv:       roundOrNull(median(daily.map(d => d.hrv_ms))),
       sleep:     roundOrNull(median(daily.map(d => d.sleep_hours)), 1),
       recovery:  roundOrNull(median(daily.map(d => d.recovery_score))),
-      standJump: roundOrNull(median((D.standingEvents || []).map(e => e.hr_jump_bpm)))
+      // Heart rate can dip slightly on standing, so a typical "rise" can be
+      // negative. We report it as 0 rather than "a rise of -8 bpm".
+      // (Found by property-based testing.)
+      standJump: nonNegative(roundOrNull(median((D.standingEvents || []).map(e => e.hr_jump_bpm))))
     };
   }
 
