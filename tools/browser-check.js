@@ -97,7 +97,7 @@ async function waitFor(expr, ms = 5000) {
   check("privacy note is shown", await evaluate("document.querySelector('.privacy-note').innerText.includes('stays on this device')"));
   await evaluate("document.getElementById('whoop-connect-btn').click()");
   await shot("connect");
-  check("WHOOP 'coming soon' explains the API next step", await evaluate("!document.getElementById('whoop-soon').hidden && /developer API/.test(document.getElementById('whoop-soon').innerText)"));
+  check("WHOOP 'coming soon' explains the next step", await evaluate("!document.getElementById('whoop-soon').hidden && /signing in with your WHOOP account/.test(document.getElementById('whoop-soon').innerText)"));
 
   // 3. Demo path
   await evaluate("document.getElementById('use-demo-btn').click()");

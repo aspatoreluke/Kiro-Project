@@ -90,6 +90,7 @@ export function buildPrompt(p) {
     "- Describe patterns compared to the person's OWN usual (their baseline), never other people.",
     "- Use only the numbers given below. Do not invent, change, or calculate new numbers.",
     "- Calm, kind, non-alarming. About an 8th-grade reading level. Each sentence under 40 words.",
+    "- In sentences to the person, write 'beats per minute' (not 'bpm') and 'heart rate variability (HRV)' (not just 'HRV'). Say 'your usual', not 'baseline'. Doctor sentences may use bpm and HRV.",
     "- The doctor decides what patterns mean.",
     "",
     "PATTERNS. Each has an exact FACT sentence. Rewrite it warmly in your own words, but keep its",

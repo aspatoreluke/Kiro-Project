@@ -25,10 +25,12 @@
 
   // ---- Templates (plain, kind, own-baseline framing, never diagnostic) ----
   const TEMPLATES = {
+    // Plain words over "bpm", and under 40 words (flagged by our plain-language
+    // reviewer agent, run through the Kiro CLI).
     orthostatic: (f) =>
       `On ${f.bigJumpDays} of ${f.totalDizzyDays} days you felt dizzy, your heart rate rose about ` +
-      `${f.avgJump} bpm within ${f.windowMinutes} minutes of standing up after sitting a while — ` +
-      `higher than your usual rise of about ${f.baselineJump} bpm.`,
+      `${f.avgJump} beats per minute within ${f.windowMinutes} minutes of standing up — ` +
+      `more than your usual rise of about ${f.baselineJump}.`,
 
     shortsleep: (f) =>
       `On ${f.afterShort} of ${f.totalCrashDays} days you logged a crash, it followed a night under ` +
@@ -39,15 +41,18 @@
       `About ${f.sharePct}% of your symptom taps fell in the week before your period, even though ` +
       `that week is only about ${f.expectedPct}% of your cycle — a pattern worth noting.`,
 
+    // Three short sentences instead of one long one (our reviewer agent found the
+    // old version could run to 72 words when all four signals were off).
     todayPace: (r) => {
       const bits = r.reasons.map(reason => {
-        if (reason.k === "recovery") return `your recovery is a bit below your usual (${reason.v} vs ~${reason.base})`;
-        if (reason.k === "hrv") return `your HRV is lower than your usual (${reason.v} vs ~${reason.base} ms)`;
-        if (reason.k === "sleep") return `you slept under your usual last night (${reason.v} h vs ~${reason.base} h)`;
-        if (reason.k === "restingHr") return `your resting heart rate is higher than your usual (${reason.v} vs ~${reason.base} bpm)`;
+        if (reason.k === "recovery") return `recovery score ${reason.v} (usually ~${reason.base})`;
+        if (reason.k === "hrv") return `heart rate variability (HRV) ${reason.v} (usually ~${reason.base})`;
+        if (reason.k === "sleep") return `sleep ${reason.v} hours (usually ~${reason.base})`;
+        if (reason.k === "restingHr") return `resting heart rate ${reason.v} (usually ~${reason.base})`;
         return "";
       }).filter(Boolean);
-      return `Your body looks a bit like it did before some of your harder days — ${listJoin(bits)}. ` +
+      return `Your body looks a bit like it did before some of your harder days. ` +
+             `What's different from your usual: ${listJoin(bits)}. ` +
              `Consider taking it easy today and pacing yourself.`;
     },
 
@@ -113,7 +118,7 @@
     const doctor = audience === "doctor";
     const templateIntro = doctor
       ? "Patient-collected wearable patterns, compared to the patient's own baseline. Shared to support the visit."
-      : "Here's what your own data has been showing lately — in plain language — so you can talk it through with your doctor.";
+      : "Here's what your own data has been showing lately, so you can talk it through with your doctor.";
     const aiIntro = aiText(doctor ? "doctorIntro" : "patientIntro");
 
     const patterns = findings.map(f => {

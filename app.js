@@ -244,7 +244,7 @@
       const canvasId = "mini-" + i;
       card.innerHTML =
         `<h3>${escapeHtml(f.title)}</h3>` +
-        `<span class="baseline-tag">compared to your own baseline</span>` +
+        `<span class="baseline-tag">compared to your own usual</span>` +
         `<p class="finding-sentence">${escapeHtml(sentence)}${aiTag(written.ai)}</p>` +
         `<div class="mini-chart-wrap"><canvas id="${canvasId}"></canvas></div>` +
         (f.source ? `<p class="source-note">${escapeHtml(f.source.label)} ` +
