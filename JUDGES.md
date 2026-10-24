@@ -49,6 +49,24 @@ asked that patients choose their own symptoms (Req 1b), and we decided not to pa
   color never the only signal, screen-reader rules. Uses `fileMatch` inclusion, so it loads only
   when Kiro edits screens, styles, charts, or wording.
 
+**The strategy that made the biggest difference: every steering rule is concrete enough to
+check, and gets a check.** Our first instinct was rules like "be careful with medical
+language". That's a vibe, and neither Kiro nor we could tell when it was broken. So we rewrote
+each rule as something testable, then paired it with an automatic check:
+
+| Steering rule (in words) | What enforces it automatically |
+|---|---|
+| "Never diagnose or recommend treatment" (safety.md) | `assertSafeText()` on every sentence, the no-diagnosis hook on every save, 7 safety properties |
+| "Include the exact note: This is not a diagnosis — your clinician decides" | fixed string in every brief (never AI-written), checked in tests |
+| "Only pattern codes and numbers go to the AI" (privacy.md) | whitelist on both sides, a test that sends a name and an "ignore your rules" note and checks neither arrives |
+| "Never invent values; missing stays missing" | the data model's `null` + availability flags, 3 "never invents" properties |
+| "Tap targets at least 44px, no sideways scroll at 390px" (accessibility.md) | the headless-browser walk-through measures both |
+
+Steering made Kiro write it right the first time most of the time; the checks caught the times
+it didn't. The second thing that helped was **inclusion modes**: safety and privacy are
+always-on because they're non-negotiable, while accessibility loads only for UI and wording work,
+so Kiro's context stays focused on the task at hand.
+
 ## 3. Hooks: automatic checks on save
 
 - **No Diagnostic Language:** scans the app's text for diagnostic or prescriptive wording. Its
@@ -119,6 +137,24 @@ Live testing caught two problems that unit tests couldn't:
 Instead of a few examples, each property runs on hundreds of random inputs: junk values, missing
 metrics, cut-off files, odd sentences. 25 properties cover the safety guard, the pattern finder,
 the data model, and both adapters.
+
+**Which requirements we enabled PBT for.** We chose the requirements where one wrong output harms
+trust or safety, and where hand-picked examples can't cover the space: any sentence, any messy
+export. The properties are listed in the spec (design.md, "Correctness properties") and each
+test names the requirement it validates.
+
+| Requirement | Properties (each run 200–300×) |
+|---|---|
+| **Req 8 Safety** (never diagnose or prescribe; disclaimer on every brief) | "you have [condition]" always blocked · medication names always blocked, any case · "This is not a diagnosis" always allowed · "you have logged…" allowed · a disclaimer can't sneak a diagnosis through · plain pattern wording never blocked · whatever goes in, `assertSafeText` output is safe |
+| **Req 3 Trigger Detective** (own baseline; drop weak patterns) | baseline never NaN or negative · baseline is the person's own middle value (shift all readings +5 → baseline +5) · 0–3 findings, strongest first, strengths in [0, 1] |
+| **Req 5.3 / 14.4** (no section for missing data) | a finding is never reported for a metric the data doesn't have |
+| **Req 4 Early warning** | Today score in [0, 1], using only signals that exist |
+| **Req 7.3 + 8** (all generated text is safe) | every sentence from any dataset passes the guard and never shows "NaN" or "undefined" |
+| **Req 13 Adapters** (one standard model; tolerate messy rows; never invent) | data model always full-shape and in range · cleaning is stable · CSV round-trips commas, quotes, line breaks · CSV never crashes · WHOOP always standard, whatever columns · WHOOP never reports steps or cycle · column order doesn't matter · Apple always standard · Apple never invents a metric · never double counts iPhone + Watch steps · cut-off or garbage files never crash, date of birth never kept |
+| **Req 14.1** (huge files read on-device in slices) | slicing a file anywhere gives the same result as reading it whole |
+
+Unit tests check the cases we thought of. Properties found the ones we didn't: our own disclaimer
+being blocked, and the negative baseline.
 
 | Caught | Why it mattered |
 |---|---|

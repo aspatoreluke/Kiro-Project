@@ -351,6 +351,25 @@ numbers, no raw signals, no identifiers). It calls the AI model (key read from
 
 This keeps the demo bulletproof: worst case, it looks exactly like today's working app.
 
+### Correctness properties (Req 17), as built
+
+Each property is a `fast-check` test in `tests/*.props.test.js`, named after the rule it checks.
+
+- **Safety (Req 8):** P1 "you have [condition]" is always blocked · P2 medication names are always
+  blocked · P3 "This is not a diagnosis" is always allowed · P4 "you have [did-verb]" is allowed ·
+  P5 a disclaimer can't hide a diagnosis · P6 plain pattern wording is never blocked · P7
+  `assertSafeText` output is always safe.
+- **Analysis (Req 3, 4, 5.3, 7.3, 14.4):** P8 baseline is finite, non-negative, or null · P9
+  baseline shifts with the data (own baseline) · P10 0–3 findings, sorted, strength in [0, 1] · P11
+  no finding for a missing metric · P12 Today score in [0, 1] using only existing signals · P13
+  every generated sentence is safe and has no NaN/undefined.
+- **Data model (Req 13):** P14 full shape, in range, sorted, honest availability · P15 cleaning is
+  idempotent.
+- **Adapters (Req 13, 14.1):** P16 CSV round-trip · P17 CSV never crashes · P18 WHOOP always
+  standard · P19 WHOOP never reports steps or cycle · P20 WHOOP ignores column order · P21 Apple
+  always standard · P22 slicing anywhere = whole file · P23 no double-counted steps · P24 Apple
+  never invents a metric · P25 cut-off or garbage never crashes, and date of birth is never kept.
+
 ### Property-based testing (Req 17)
 
 Using a property-based testing approach (fast-check style generators run under Node). Properties:
