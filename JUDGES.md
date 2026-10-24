@@ -1,6 +1,6 @@
 # How we built Receipts with Kiro
 
-**Live app:** https://melodic-bonbon-4f819b.netlify.app · **Repo:** https://github.com/aspatoreluke/Kiro-Project
+**Live app:** https://aspatoreluke.github.io/Kiro-Project/ · **With live AI:** https://melodic-bonbon-4f819b.netlify.app · **Repo:** https://github.com/aspatoreluke/Kiro-Project
 
 We're a **non-coding team**. We didn't write the code; we directed Kiro to build it, and used
 Kiro's structure (specs, steering, hooks, MCP, property tests) to stay in control of a health app

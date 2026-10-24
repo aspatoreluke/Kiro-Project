@@ -2,7 +2,9 @@
 
 **Your body's evidence, in plain sight.**
 
-**Live app:** https://melodic-bonbon-4f819b.netlify.app (no login)
+**Live app:** https://aspatoreluke.github.io/Kiro-Project/ (no login)
+
+**With live AI wording:** https://melodic-bonbon-4f819b.netlify.app (Netlify; paused new deploys after free credits ran out, so it may show an earlier version)
 
 Receipts helps people with chronic, hard-to-diagnose conditions (POTS, long COVID, ME/CFS,
 migraines, endometriosis, autoimmune conditions) turn the data their wearable already collects
