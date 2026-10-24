@@ -167,6 +167,21 @@ async function waitFor(expr, ms = 5000) {
     check("today card renders", await evaluate("document.getElementById('today-content').innerText.length > 20"));
   }
 
+  // Live AI (only meaningful on the deployed site, where the function exists)
+  if (process.env.EXPECT_AI) {
+    await evaluate("RECEIPTS_DATASOURCE.useDemo()");
+    await waitFor("['done','failed'].includes(RECEIPTS_AI.getState().status)", 15000);
+    const s = await evaluate("(({status, provider, accepted, rejected, reason}) => ({status, provider, accepted, rejected, reason}))(RECEIPTS_AI.getState())");
+    check("live AI answered and its wording passed the checks", s.status === "done" && s.accepted > 0, JSON.stringify(s));
+    await evaluate("document.querySelector('[data-screen=\"screen-detective\"]').click()");
+    await sleep(400);
+    check("Patterns screen shows the AI label", await evaluate("document.querySelectorAll('#findings-list .ai-label').length > 0"));
+    console.log("   sample AI sentence:", await evaluate("(document.querySelector('#findings-list .finding-sentence')||{}).innerText || ''"));
+    await evaluate("document.querySelector('[data-screen=\"screen-today\"]').click()");
+    await sleep(300);
+    console.log("   today:", await evaluate("document.getElementById('today-content').innerText.replace(/\\n+/g,' | ')"));
+  }
+
   check("no JavaScript errors on the page", errors.length === 0, errors.join(" || ") || "none");
   ws.close(); chrome.kill();
   await new Promise(r => { chrome.once("exit", r); setTimeout(r, 3000); });

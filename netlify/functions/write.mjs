@@ -93,25 +93,28 @@ async function withTimeout(promiseFn, ms) {
 
 // ---- Providers ----
 async function callGemini(prompt, key, signal) {
-  // Try the configured model, then stable aliases, until one exists.
-  const models = [process.env.GEMINI_MODEL, "gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash"]
-    .filter(Boolean);
+  // Fastest first: Flash-Lite with thinking turned down answers in a few seconds.
+  // (The full Flash model "thinks" first and blew past our time limit.)
+  const models = [process.env.GEMINI_MODEL, "gemini-flash-lite-latest", "gemini-flash-latest"].filter(Boolean);
   let lastErr = "no model";
   for (const model of models) {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": key },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.4, maxOutputTokens: 1200, responseMimeType: "application/json" }
-      }),
-      signal
-    });
-    if (res.status === 404) { lastErr = `model ${model} not found`; continue; }
-    if (!res.ok) throw new Error(`gemini ${res.status}`);
-    const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "";
-    return { model, text };
+    // Try with minimal thinking; if this model doesn't accept that setting, try plain.
+    for (const thinking of [{ thinkingLevel: "minimal" }, null]) {
+      const generationConfig = { temperature: 0.4, maxOutputTokens: 1200, responseMimeType: "application/json" };
+      if (thinking) generationConfig.thinkingConfig = thinking;
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig }),
+        signal
+      });
+      if (res.status === 400 && thinking) { lastErr = `gemini 400 (${model}, thinking)`; continue; }
+      if (res.status === 404) { lastErr = `gemini 404 (${model})`; break; }
+      if (!res.ok) throw new Error(`gemini ${res.status} (${model})`);
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.filter(p => !p.thought).map(p => p.text || "").join("") || "";
+      return { model, text };
+    }
   }
   throw new Error(lastErr);
 }
