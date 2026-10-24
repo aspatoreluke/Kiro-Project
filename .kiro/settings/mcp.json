@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch@2026.10.19"],
+      "env": {},
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}

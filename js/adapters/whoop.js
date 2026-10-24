@@ -30,6 +30,7 @@
     asleep_min:     [/^asleepduration/, /^totalsleepduration/],
     inbed_min:      [/^inbedduration/],
     wake:           [/^wakeonset/],
+    nap:            [/^nap$/, /^isnap$/],
     cycle_start:    [/^cyclestarttime/, /^cyclestart/, /^date$/]
   };
 
@@ -75,12 +76,16 @@
     let skipped = 0;
     let inBedOnly = false;
 
+    let naps = 0;
     list.forEach(text => {
       const { keys, records } = CSV.toObjects(text);
       const cols = findColumns(keys);
       records.forEach(r => {
         const date = dateOf(r[cols.wake]) || dateOf(r[cols.cycle_start]);
         if (!date) { skipped++; return; }
+        // sleeps.csv lists naps as their own rows. A nap isn't "last night's
+        // sleep", so skip it. (Found by reading WHOOP's export docs via MCP.)
+        if (cols.nap && /^(true|yes|1)$/i.test(String(r[cols.nap]).trim())) { naps++; return; }
         const asleep = num(r[cols.asleep_min]);
         const inbed = num(r[cols.inbed_min]);
         const sleepMin = asleep !== null ? asleep : null; // in-bed time isn't sleep; don't substitute it
@@ -99,7 +104,17 @@
       });
     });
     if (skipped) notes.push(`Skipped ${skipped} row(s) without a readable date.`);
+    if (naps) notes.push(`Left out ${naps} nap(s), so sleep means your main sleep each night.`);
     if (inBedOnly) notes.push("Some nights only had time-in-bed, not time asleep, so sleep is left blank for those nights.");
+
+    // Several rows can land on the same morning (e.g. naps without a Nap column,
+    // or both CSVs uploaded). Keep the LONGEST sleep as that night's sleep, so a
+    // short nap can never replace the main night.
+    const longest = new Map();
+    rawDays.forEach(d => {
+      if (d.sleep_hours !== null && d.sleep_hours > (longest.get(d.date) || 0)) longest.set(d.date, d.sleep_hours);
+    });
+    rawDays.forEach(d => { if (longest.has(d.date)) d.sleep_hours = longest.get(d.date); });
 
     return MODEL.buildDataset(rawDays, {
       source: "whoop",

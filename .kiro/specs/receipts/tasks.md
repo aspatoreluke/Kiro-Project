@@ -158,7 +158,7 @@ track progress together.
 - [x] 30. Second hook (run tests on core save)
   - `.kiro/hooks/run-tests-on-core-save.json` + runner.
   - _Requirements: 18.3_
-- [ ] 31. MCP server (genuine use)
+- [x] 31. MCP server (genuine use)
   - Set up and use a fetch/docs or GitHub MCP; document use (or the attempt).
   - _Requirements: 18.4_
 

@@ -49,6 +49,20 @@ test("availability flags reflect what's really in the file", () => {
   assert.strictEqual(a.cycle_day, false);
 });
 
+test("naps in sleeps.csv never replace the main night's sleep", () => {
+  const W = load().RECEIPTS_ADAPTER_WHOOP;
+  const sleeps = [
+    "Cycle start time,Sleep onset,Wake onset,Sleep performance %,Asleep duration (min),In bed duration (min),Nap",
+    "2025-09-01 22:40:00,2025-09-01 22:40:00,2025-09-02 06:50:00,88,450,490,false",
+    "2025-09-01 22:40:00,2025-09-02 14:00:00,2025-09-02 14:25:00,30,22,25,true"
+  ].join("\n");
+  const day = W.parse(sleeps).daily.find(d => d.date === "2025-09-02");
+  assert.strictEqual(day.sleep_hours, 7.5);
+  // Even with no Nap column, the longest sleep that morning wins.
+  const noNapCol = sleeps.replace(/,Nap$/m, "").replace(/,(true|false)$/gm, "");
+  assert.strictEqual(W.parse(noNapCol).daily.find(d => d.date === "2025-09-02").sleep_hours, 7.5);
+});
+
 test("the whole app runs on WHOOP data", () => {
   const g = load();
   const ds = g.RECEIPTS_ADAPTER_WHOOP.parse(SAMPLE);
