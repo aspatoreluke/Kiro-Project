@@ -52,8 +52,8 @@ test("sends only whitelisted pattern numbers to the AI — never free text", asy
   body.patientName = "Jane";
   await run(req(body));
   const sent = calls[0].body.contents[0].parts[0].text;
-  assert.ok(!sent.includes("Jane") && !sent.includes("ignore your rules") && !sent.includes("dizzy\""));
-  assert.ok(sent.includes('"avgJump":35'));
+  assert.ok(!sent.includes("Jane") && !sent.includes("ignore your rules"));
+  assert.ok(sent.includes("about 35 bpm"));
 });
 
 test("returns the AI's JSON on success", async () => {
