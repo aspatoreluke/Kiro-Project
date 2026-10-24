@@ -137,10 +137,10 @@ track progress together.
   - _Requirements: 18.5_
 
 ### Priority 2 — Live AI
-- [ ] 26. Netlify AI function
+- [x] 26. Netlify AI function
   - `netlify/functions/write.js`: patterns-only in → text out; key from env var.
   - _Requirements: 16_
-- [ ] 27. Client AI wiring + fallback + label
+- [x] 27. Client AI wiring + fallback + label
   - `writer.js`: 8s timeout, safety check on every response, auto-fallback to templates, "AI-written
     · checked for safety" label.
   - _Requirements: 16_
