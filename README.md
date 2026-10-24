@@ -29,7 +29,7 @@ It's a plain static web app — no build step, no login, no server.
   python3 -m http.server 8000
   # then open http://localhost:8000
   ```
-- **Live demo:** _(add your Netlify link here once deployed)_
+- **Live demo:** https://melodic-bonbon-4f819b.netlify.app
 
 ---
 
