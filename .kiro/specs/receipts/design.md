@@ -276,3 +276,112 @@ sections shown/hidden by `app.js`.
 | 9 Design & accessibility | `styles.css` design system |
 | 10 Five screens & nav | `index.html` + `app.js` |
 | 11 Deploy & repo | `netlify.toml`, GitHub, `.kiro` committed |
+
+---
+
+## Design — v2 upgrades
+
+### New file structure (additions)
+```
+js/
+  adapters/
+    standard-model.js   # the one standard daily data model + validators
+    whoop.js            # WHOOP CSV  -> standard model
+    apple-health.js     # Apple Health export.xml -> standard model
+    (oura.js, fitbit.js # stretch)
+  datasource.js         # chooses demo vs uploaded data; exposes one API to the app
+tests/
+  analysis.props.test.js   # property-based tests
+  safety.props.test.js
+  adapters.props.test.js
+netlify/
+  functions/
+    write.js            # serverless AI writing step (patterns in -> text out)
+.kiro/
+  steering/
+    accessibility.md    # large text, high contrast, plain language
+    privacy.md          # data stays on device; only patterns to AI
+  hooks/
+    run-tests-on-core-save.json  # 2nd hook
+```
+
+### Wearable integration (Req 12–15)
+
+**Standard daily model** (`adapters/standard-model.js`) — the single shape everything downstream
+uses (same as the existing demo record): `date, recovery_score, hrv_rmssd_ms, resting_hr_bpm,
+sleep_hours, day_strain, steps, skin_temp_c, cycle_day`. A validator fills missing fields with
+`null` and flags which metrics are unavailable (`availability: {hrv:false, ...}`).
+
+**Adapters** convert raw exports into that model:
+- `whoop.js` — parses WHOOP CSV columns (recovery %, HRV ms, RHR, sleep). Maps header names
+  flexibly (WHOOP has changed column names across versions).
+- `apple-health.js` — parses Apple Health `export.xml` records: `HKQuantityTypeIdentifierRestingHeartRate`,
+  `HKQuantityTypeIdentifierHeartRateVariabilitySDNN`, sleep analysis, steps. Zipped export: unzip in
+  the browser (JSZip via CDN) then read `export.xml`. Groups readings into daily records.
+- Both are pure functions: `parse(text|file) -> { daily, availability, source }`. They skip/clean
+  bad rows (Req 13.3) and never invent values (Req 13.4).
+
+**`datasource.js`** — a thin switch. Default = demo (Maya). On successful upload, it swaps the active
+dataset to the uploaded one and re-renders. The rest of the app reads from `datasource.getData()`
+and never knows the device. Analysis/writer/charts already consume the standard model, so no change
+is needed in them beyond reading through the datasource.
+
+**Privacy (Req 14):** all parsing uses the browser `File` API and runs client-side. Nothing is sent
+anywhere. Optional `localStorage` persistence only, with a visible note on the connect screen.
+
+**Missing metrics (Req 14.4):** if `availability.hrv` is false, the HRV timeline line and any
+HRV-dependent finding are hidden with a plain line like "HRV wasn't in this export, so we can't show
+that pattern."
+
+**Watch view (Req 15):** a new screen with a round smartwatch frame showing the patient's symptom
+buttons; taps go through the same logging path so they appear on the timeline.
+
+### Live AI writing step (Req 16)
+
+**`netlify/functions/write.js`** — receives a small JSON payload of DETECTED PATTERNS ONLY (facts +
+numbers, no raw signals, no identifiers). It calls the AI model (key read from
+`process.env.AI_API_KEY`, a Netlify environment variable) and returns the generated strings.
+
+**Client flow (in `writer.js`):**
+1. Try the serverless function with an 8-second timeout (via `AbortController`).
+2. Run every returned string through `assertSafeText()`.
+3. If the call fails, times out, or any string fails the safety check → silently use the local
+   templates (the current default). The user always gets text.
+4. When AI text is used and passes, show a small "AI-written · checked for safety" label.
+
+This keeps the demo bulletproof: worst case, it looks exactly like today's working app.
+
+### Property-based testing (Req 17)
+
+Using a property-based testing approach (fast-check style generators run under Node). Properties:
+- **analysis:** for any non-empty daily series of plausible values, `computeBaseline()` returns
+  finite, non-negative numbers (never NaN/negative); detective returns 0–3 findings; strengths are
+  within [0,1].
+- **safety:** for generated strings containing "you have <condition>" or a medication name,
+  `scan()` returns ≥1 problem; for strings containing "this is not a diagnosis", it never flags that
+  phrase.
+- **adapters:** for randomly corrupted/short/missing-column inputs, adapters still return the
+  standard model shape with correct `availability` flags and never throw.
+
+### More Kiro features (Req 18)
+- **Steering:** `accessibility.md` and `privacy.md` added to `.kiro/steering/`.
+- **Second hook:** `run-tests-on-core-save.json` — PostFileSave on `analysis.js`, `safety.js`, or
+  `js/adapters/*` runs the property tests.
+- **MCP:** attempt a fetch/docs MCP to read WHOOP + Apple Health export docs while building adapters,
+  or GitHub MCP for commits. If none connects quickly, document the attempt.
+
+### FHIR export (Req 19, stretch)
+A function that renders the doctor brief as a minimal FHIR `Bundle` (Observation resources for the
+patterns), downloadable as JSON, labeled "prototype."
+
+### Requirement mapping (v2)
+| Requirement | Where |
+|---|---|
+| 12 Connect wearable | new connect screen + `datasource.js` |
+| 13 Adapters | `js/adapters/*` + `standard-model.js` |
+| 14 Browser-only/privacy | adapters (client-side) + connect-screen note |
+| 15 Watch view | new watch screen in `index.html` + `app.js` |
+| 16 Live AI | `netlify/functions/write.js` + `writer.js` fallback |
+| 17 Property tests | `tests/*.props.test.js` |
+| 18 Kiro features | 2 steering docs, 2nd hook, MCP |
+| 19 FHIR (stretch) | brief export function |

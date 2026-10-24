@@ -109,3 +109,69 @@ track progress together.
   - Walk all 5 screens on a mobile viewport; confirm patterns render, brief prints to one page,
     safety guard passes on all generated text, personalization persists, public link loads.
   - _Requirements: all_
+
+---
+
+## v2 Tasks (judging strengthening) — do in priority order
+
+### Priority 1 — Wearable integration
+- [ ] 20. Standard data model + datasource switch
+  - `js/adapters/standard-model.js` (shape + validator + availability flags); `js/datasource.js`
+    (demo vs uploaded; one API the app reads). Route existing screens through the datasource.
+  - _Requirements: 13, 14_
+- [ ] 21. WHOOP CSV adapter
+  - `js/adapters/whoop.js`: parse WHOOP CSV → standard model; flexible headers; skip bad rows.
+  - _Requirements: 13_
+- [ ] 22. Apple Health adapter
+  - `js/adapters/apple-health.js`: parse `export.xml` (and zipped export via JSZip) → standard model.
+  - _Requirements: 13_
+- [ ] 23. Connect-your-wearable screen
+  - Upload (WHOOP/Apple), "Use demo data (Maya)" default, "Connect WHOOP (coming soon)" explainer,
+    privacy note, missing-metric messaging.
+  - _Requirements: 12, 14_
+- [ ] 24. Watch view
+  - Smartwatch-styled tap screen; taps appear on the timeline.
+  - _Requirements: 15_
+- [ ] 25. .gitignore sample-data rules
+  - Ignore `sample-data/`, `*.export.xml`, personal export patterns; never commit real exports.
+  - _Requirements: 18.5_
+
+### Priority 2 — Live AI
+- [ ] 26. Netlify AI function
+  - `netlify/functions/write.js`: patterns-only in → text out; key from env var.
+  - _Requirements: 16_
+- [ ] 27. Client AI wiring + fallback + label
+  - `writer.js`: 8s timeout, safety check on every response, auto-fallback to templates, "AI-written
+    · checked for safety" label.
+  - _Requirements: 16_
+
+### Priority 3 — Property-based testing
+- [ ] 28. Property tests
+  - `tests/analysis.props.test.js`, `safety.props.test.js`, `adapters.props.test.js`; summarize
+    findings.
+  - _Requirements: 17_
+
+### Priority 4 — More Kiro features
+- [ ] 29. Accessibility & privacy steering docs
+  - `.kiro/steering/accessibility.md`, `.kiro/steering/privacy.md`.
+  - _Requirements: 18.1, 18.2_
+- [ ] 30. Second hook (run tests on core save)
+  - `.kiro/hooks/run-tests-on-core-save.json` + runner.
+  - _Requirements: 18.3_
+- [ ] 31. MCP server (genuine use)
+  - Set up and use a fetch/docs or GitHub MCP; document use (or the attempt).
+  - _Requirements: 18.4_
+
+### Priority 5 — Docs
+- [ ] 32. Update JUDGES.md and README.md
+  - Wearable/adapters, privacy, live AI + fallback, PBT (+ catches), new steering/hooks, MCP, Kiro
+    tools used, spec-driven vs vibe coding from a non-coder view.
+  - _Requirements: 11_
+
+### Stretch
+- [ ] 33. FHIR brief export (prototype) — cut first under time pressure.
+  - _Requirements: 19_
+
+### Final
+- [ ] 34. Verify deployed site in a fresh browser; laptop + phone test checklist.
+  - _Requirements: all_

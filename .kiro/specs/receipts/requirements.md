@@ -207,3 +207,112 @@ the Kiro artifacts visible, so judges can see how we used Kiro.
    `.gitignore`.
 4. The repository SHALL include a README and a judges' write-up describing use of specs, steering,
    and hooks.
+
+---
+
+## Requirements — v2 upgrades (judging strengthening)
+
+### Requirement 12 — Connect your wearable
+**User story:** As a patient, I want to connect my own wearable data or use the demo, so the app
+works with my real body data and the wearable-to-healthcare story is explicit.
+
+#### Acceptance criteria
+1. The app SHALL provide a "Connect your wearable" screen with three options:
+   (a) upload a real export file, (b) use demo data (Maya), (c) a "Connect WHOOP account
+   (coming soon)" button.
+2. Upload SHALL support at least a WHOOP CSV export and an Apple Health export (`export.xml`, or a
+   zipped export). Oura and Fitbit/Google CSV support is a stretch goal.
+3. "Use demo data (Maya)" SHALL remain the default so the demo never breaks.
+4. The "Connect WHOOP account (coming soon)" button SHALL explain that the official API (OAuth)
+   connection is the planned next step. No OAuth is attempted in this build.
+5. After a successful upload, the whole app (timeline, Trigger Detective, Today, brief) SHALL run on
+   the uploaded data instead of the demo data.
+
+### Requirement 13 — Data adapter layer
+**User story:** As the app, I want each device's format converted into one standard data model, so
+the rest of the app never needs to know which device the data came from.
+
+#### Acceptance criteria
+1. The system SHALL provide an adapter per supported device (e.g. `js/adapters/whoop.js`,
+   `js/adapters/apple-health.js`) that converts the device export into the standard daily data
+   model: resting HR, HRV, sleep, steps/strain, skin temp, cycle day (when available).
+2. All adapters SHALL output the SAME standard shape, so downstream code is device-agnostic.
+3. Adapters SHALL tolerate missing or messy rows without crashing (skip/clean bad rows).
+4. IF a metric is entirely absent from an upload THEN the adapter SHALL mark it unavailable rather
+   than inventing values.
+
+### Requirement 14 — Browser-only processing & privacy
+**User story:** As a patient, I want my uploaded health data to stay on my device, so I can trust
+the app with sensitive information.
+
+#### Acceptance criteria
+1. Uploaded files SHALL be parsed entirely in the browser. No upload data SHALL be sent to any
+   server.
+2. Uploaded data SHALL NOT be persisted anywhere except, optionally, the user's own browser
+   (localStorage), and only with a clear indication.
+3. The connect screen SHALL show a plain-language privacy note stating the data never leaves the
+   device.
+4. IF an uploaded file is missing a metric THEN the app SHALL still work and SHALL plainly say which
+   insights aren't available.
+
+### Requirement 15 — Watch view
+**User story:** As a presenter, I want a smartwatch-styled tap screen, so I can demo logging a
+symptom "from the wrist" and watch it appear on the timeline.
+
+#### Acceptance criteria
+1. The app SHALL provide a "watch view" styled like a round/square smartwatch face with the
+   patient's symptom buttons.
+2. Tapping a symptom in the watch view SHALL record it and SHALL make it appear on the timeline.
+
+### Requirement 16 — Live AI writing step (demo-proof)
+**User story:** As a patient, I want warm, human-sounding explanations, with a reliable fallback so
+the demo never breaks.
+
+#### Acceptance criteria
+1. The system SHALL provide a Netlify serverless function that receives ONLY the detected patterns
+   (never raw personal data) and returns the Trigger Detective explanations, the early-warning
+   message, and both briefs.
+2. The AI API key SHALL be stored as a Netlify environment variable — never in the code or repo.
+3. Every AI response SHALL pass `assertSafeText()` before display.
+4. IF the AI call fails, takes longer than 8 seconds, or fails the safety check THEN the system
+   SHALL automatically fall back to the existing local templates.
+5. AI-written text SHALL show a small "AI-written · checked for safety" label; template text SHALL
+   not claim to be AI-written.
+
+### Requirement 17 — Property-based testing
+**User story:** As a team, we want automated property tests on the risky logic, so we catch edge
+cases a non-coder would miss.
+
+#### Acceptance criteria
+1. The system SHALL include property-based tests for `js/analysis.js`, `js/safety.js`, and the
+   adapters.
+2. Properties SHALL include at least: baseline never returns NaN or negative values; adapters always
+   output the standard data model even with missing/messy rows; the safety guard always blocks
+   "you have [condition]" phrases and medication names, and always allows "this is not a diagnosis".
+3. Test results (including anything the tests caught) SHALL be summarized for the team.
+
+### Requirement 18 — More Kiro features (steering, hooks, MCP, powers)
+**User story:** As a team judged on Kiro usage, we want to demonstrably use more of Kiro's
+capabilities.
+
+#### Acceptance criteria
+1. The system SHALL add an accessibility & design steering doc (large text, high contrast, plain
+   language at ~8th-grade reading level).
+2. The system SHALL add a privacy steering doc (data stays on device; no real health data in the
+   repo; only patterns are sent to the AI).
+3. The system SHALL add a second agent hook that runs the tests whenever `analysis.js`, `safety.js`,
+   or any adapter is saved.
+4. The system SHALL set up and genuinely use at least one MCP server (e.g. a fetch/docs MCP to read
+   WHOOP / Apple Health export docs, or GitHub MCP) — or, if none can connect quickly, document the
+   attempt and intended use.
+5. Real personal export files, if used for testing, SHALL NEVER be committed; sample-data patterns
+   SHALL be added to `.gitignore`.
+
+### Requirement 19 (STRETCH) — FHIR brief export
+**User story:** As a clinic, I want the brief as a structured healthcare-standard file, so it could
+plug into records systems.
+
+#### Acceptance criteria
+1. IF time allows THEN the doctor brief MAY also export as a FHIR-structured file, clearly labeled a
+   prototype.
+2. This is explicitly a stretch goal and the first thing cut under time pressure.
