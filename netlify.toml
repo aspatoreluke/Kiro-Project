@@ -1,5 +1,6 @@
 # Netlify config for Receipts.
 # Static site (no build step) + one serverless function for the live AI step.
+# Security headers added after a review guided by the Netlify Deployment power (via Kiro CLI).
 
 [build]
   publish = "."
@@ -7,6 +8,21 @@
 
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
 
 # (No catch-all redirect: Receipts is a single index.html, and a "/*" rewrite
 #  could shadow the /.netlify/functions/write endpoint.)
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    # Only our own files, Chart.js/JSZip from jsDelivr, and our own AI function.
+    # No inline scripts, no third-party trackers, and no embedding in other sites.
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'"
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+
+# Not added on purpose: long-lived "immutable" caching. Our files aren't
+# versioned by name, so that would keep old safety wording in people's browsers.

@@ -260,6 +260,9 @@
     return new Promise((resolve, reject) => {
       const s = document.createElement("script");
       s.src = src; s.onload = resolve;
+      // Integrity check: the browser refuses the file if the CDN copy ever changes.
+      s.integrity = "sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG";
+      s.crossOrigin = "anonymous";
       s.onerror = () => reject(new Error("Couldn't load the unzip helper. Unzip the file yourself and upload export.xml instead."));
       document.head.appendChild(s);
     });
